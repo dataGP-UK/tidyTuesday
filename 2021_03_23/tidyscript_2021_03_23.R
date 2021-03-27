@@ -51,5 +51,13 @@ roll1 <- roll_calls %>%
 
 #simplify dates to year only - separate column then select out
 
+roll2 <- roll1 %>% 
+  separate(date, 
+           into = c('year', 'month_day'),
+           sep='-', extra = 'merge') %>% 
+  select(c(-month_day, -session, -importantvote, -amend, -para))
+
+## table simplified to show rcid and details of resolutions only
+
 
 
