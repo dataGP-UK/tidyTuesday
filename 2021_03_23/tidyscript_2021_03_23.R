@@ -55,9 +55,8 @@ roll2 <- roll1 %>%
   separate(date, 
            into = c('year', 'month_day'),
            sep='-', extra = 'merge') %>% 
-  select(c(-month_day, -session, -importantvote, -amend, -para))
+  select(c(rcid, year, short))
 
-## table simplified to show rcid and details of resolutions only
+## table simplified to show rcid, year & details of resolutions only
 
-
-
+# next need to join issues with roll2 to categorize resolutions
