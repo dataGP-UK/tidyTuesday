@@ -59,4 +59,10 @@ roll2 <- roll1 %>%
 
 ## table simplified to show rcid, year & details of resolutions only
 
-# next need to join issues with roll2 to categorize resolutions
+# next join issues and unvotes with roll2
+
+un_voting <- roll2 %>% 
+  left_join(issues, by = 'rcid') %>% 
+  left_join(unvotes, by = 'rcid')
+  
+
