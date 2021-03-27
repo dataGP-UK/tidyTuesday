@@ -64,5 +64,12 @@ roll2 <- roll1 %>%
 un_voting <- roll2 %>% 
   left_join(issues, by = 'rcid') %>% 
   left_join(unvotes, by = 'rcid')
-  
+
+# lots of NAs - issues table doesnt cover all resolutions
+# also Namibia has no Country code as r has interpreted na
+## as missing value- need to work out how to correct this
+## may be need dataframe looking at key issues 
+## new questions: israel vs usa - palestine and all
+## usa vs. superpowers (China, Russia, India)
+
 
