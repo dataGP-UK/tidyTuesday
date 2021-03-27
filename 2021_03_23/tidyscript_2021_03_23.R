@@ -28,3 +28,28 @@ roll_calls %>% count(rcid) %>%
 ## reviewed 3 datasets - roll_call rcid is primary key
 ## no primary key in other data but roll_call$rcid as foreign key
 ## that links each data base with roll_call
+
+# look at each dataframe to understand variables
+## descriptions provided with datasets
+
+# define a question: 
+# how did the UK vote on UN resolutions in 2019 compared to the US
+# does this indicate any policy differences
+# explore differences in voting between Trump & Obama presidencies
+
+# filter roll_call data to 2019 only
+
+roll1 <- roll_calls %>% 
+  filter(date > '2019-01-10')
+
+# initial attempt didn't work as expected
+
+roll1 <- roll_calls %>%
+  filter(date >= "2019-01-01" & date <= "2019-12-31") # or
+
+#reviewed - there are only 90 observations - the UN only convenes in dec!
+
+#simplify dates to year only - separate column then select out
+
+
+
