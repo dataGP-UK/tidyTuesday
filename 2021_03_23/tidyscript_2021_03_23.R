@@ -83,6 +83,5 @@ issue_voting1 %>%
   facet_wrap(~issue)+
   theme(legend.position = 'NULL')
 
-  
-write_csv(issue_voting1, 'issue_voting.csv')
+
   
