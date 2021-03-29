@@ -8,17 +8,19 @@ issue_voting <- read_csv('issue_voting.csv')
 
 issue_voting %>%
   filter(country %in% c('United States', 'Israel', 
-                        'United Kingdom')) %>%
-  
+                        'United Kingdom','Saudi Arabia')) %>%
   group_by(issue,country) %>% 
   mutate(YES =
-           (yes / (yes + no + abstain) * 100), 
-         na.rm = TRUE) %>% 
+           (yes / sum(yes, no, abstain, na.rm = TRUE) * 100)) %>% 
   ggplot(aes(country, YES))+
   geom_col(aes(fill = country))+
   coord_flip()+
   facet_wrap(~issue)+
   theme_bw()+
-  theme(legend.position = 'NULL')
+  theme(legend.position = 'NULL')+
+  labs(y = "Yes (%)", x = NULL,
+       title = "Voting Patterns by Issue (UN General Congress 21/1/2017 - 31/12/2019)")
+
+
   
  
