@@ -2,7 +2,7 @@
 
 # tidy tuesday 23rd March 2021
 
-
+rm(list=ls())
 
 # Install packages and data
 install.packages("tidytuesdayR")
@@ -37,17 +37,10 @@ roll_calls %>% count(rcid) %>%
 # does this indicate any policy differences
 # explore differences in voting between Trump & Obama presidencies
 
-# filter roll_call data to 2019 only
-
-roll1 <- roll_calls %>% 
-  filter(date > '2019-01-10')
-
-# initial attempt didn't work as expected
+# filter to trump presidential term
 
 roll1 <- roll_calls %>%
   filter(date >= "2017-01-20" & date <= "2019-12-31") # switched to trump term
-
-#reviewed - there are only 90 observations - the UN only convenes in dec!
 
 #simplify dates to year only - separate column then select out
 
@@ -67,51 +60,29 @@ un_voting <- roll2 %>%
   left_join(issues, by = 'rcid') %>% 
   left_join(unvotes, by = 'rcid') %>% 
   select(-(country_code)) %>% 
-  filter(issue != (is.na = TRUE)) %>% 
-  filter(country %in% c('China', 'United States', 'United Kingdom', 'Germany',
-                        'Israel', 'Russia', 'India', 'Cuba', 'Saudi Arabia'))
+  filter(issue != (is.na = TRUE))
 
 # ready for some exploratory analysis and visualisation
-
-palestine <- un_voting %>% 
-  filter(short_name == 'me') %>%
-  group_by(country) %>% 
-  count(vote)
-  
-econ_dev <- un_voting %>% 
-  filter(short_name == 'ec') %>%
-  group_by(country) %>% 
-  count(vote)
-
-disarm <- un_voting %>% 
-  filter(short_name == 'di') %>%
-  group_by(country) %>% 
-  count(vote)
-
-colonial <-un_voting %>% 
-  filter(short_name == 'co') %>%
-  group_by(country) %>% 
-  count(vote)
-
-human_rights <- un_voting %>% 
-  filter(short_name == 'hr') %>%
-  group_by(country) %>% 
-  count(vote)
-
-nuclear <- un_voting %>% 
-  filter(short_name == 'nu') %>%
-  group_by(country) %>% 
-  count(vote)
-
-# new dataframes created for each issue 
 
 issue_voting <- un_voting %>% 
   group_by(issue, country) %>% 
   count(vote)
 
-# simpler single table - keep if can use for visualation and delete other
+# simpler single table - keep if can use for visualisation and delete other
 # need to produce wider table
 
 issue_voting1 <- issue_voting %>%
   pivot_wider(names_from = vote, values_from = n)
+
+issue_voting1 %>%
+  filter(country %in% c('United States', 'Israel', 
+                        'United Kingdom', 'Saudi Arabia')) %>% 
+  ggplot(aes(country, yes))+
+  geom_col(aes(fill = issue))+
+  coord_flip()
+  facet_wrap(~issue)+
+  theme(legend.position = 'NULL')
+
+  
+write_csv(issue_voting1, 'issue_voting.csv')
   
