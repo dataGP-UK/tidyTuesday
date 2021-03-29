@@ -110,5 +110,8 @@ issue_voting <- un_voting %>%
   count(vote)
 
 # simpler single table - keep if can use for visualation and delete other
+# need to produce wider table
 
-
+issue_voting1 <- issue_voting %>%
+  pivot_wider(names_from = vote, values_from = n)
+  
