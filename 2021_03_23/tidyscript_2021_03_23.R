@@ -68,9 +68,40 @@ un_voting <- roll2 %>%
   left_join(unvotes, by = 'rcid') %>% 
   select(-(country_code)) %>% 
   filter(issue != (is.na = TRUE)) %>% 
-  filter(country %in% c('China', 'United States', 'United Kingdom',
+  filter(country %in% c('China', 'United States', 'United Kingdom', 'Germany',
                         'Israel', 'Russia', 'India', 'Cuba', 'Saudi Arabia'))
 
 # ready for some exploratory analysis and visualisation
 
+palestine <- un_voting %>% 
+  filter(short_name == 'me') %>%
+  group_by(country) %>% 
+  count(vote)
+  
+econ_dev <- un_voting %>% 
+  filter(short_name == 'ec') %>%
+  group_by(country) %>% 
+  count(vote)
+
+disarm <- un_voting %>% 
+  filter(short_name == 'di') %>%
+  group_by(country) %>% 
+  count(vote)
+
+colonial <-un_voting %>% 
+  filter(short_name == 'co') %>%
+  group_by(country) %>% 
+  count(vote)
+
+human_rights <- un_voting %>% 
+  filter(short_name == 'hr') %>%
+  group_by(country) %>% 
+  count(vote)
+
+nuclear <- un_voting %>% 
+  filter(short_name == 'nu') %>%
+  group_by(country) %>% 
+  count(vote)
+
+# new dataframes created for each issue 
 
