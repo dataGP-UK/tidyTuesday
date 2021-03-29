@@ -105,3 +105,10 @@ nuclear <- un_voting %>%
 
 # new dataframes created for each issue 
 
+issue_voting <- un_voting %>% 
+  group_by(issue, country) %>% 
+  count(vote)
+
+# simpler single table - keep if can use for visualation and delete other
+
+
