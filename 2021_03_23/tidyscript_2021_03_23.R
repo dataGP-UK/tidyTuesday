@@ -45,7 +45,7 @@ roll1 <- roll_calls %>%
 # initial attempt didn't work as expected
 
 roll1 <- roll_calls %>%
-  filter(date >= "2019-01-01" & date <= "2019-12-31") # or
+  filter(date >= "2017-01-20" & date <= "2019-12-31") # switched to trump term
 
 #reviewed - there are only 90 observations - the UN only convenes in dec!
 
@@ -60,16 +60,17 @@ roll2 <- roll1 %>%
 ## table simplified to show rcid, year & details of resolutions only
 
 # next join issues and unvotes with roll2
+## also filtered for countries of interest
+
 
 un_voting <- roll2 %>% 
   left_join(issues, by = 'rcid') %>% 
-  left_join(unvotes, by = 'rcid')
+  left_join(unvotes, by = 'rcid') %>% 
+  select(-(country_code)) %>% 
+  filter(issue != (is.na = TRUE)) %>% 
+  filter(country %in% c('China', 'United States', 'United Kingdom',
+                        'Israel', 'Russia', 'India', 'Cuba', 'Saudi Arabia'))
 
-# lots of NAs - issues table doesnt cover all resolutions
-# also Namibia has no Country code as r has interpreted na
-## as missing value- need to work out how to correct this
-## may be need dataframe looking at key issues 
-## new questions: israel vs usa - palestine and all
-## usa vs. superpowers (China, Russia, India)
+# ready for some exploratory analysis and visualisation
 
 
