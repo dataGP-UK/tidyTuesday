@@ -2,7 +2,6 @@
 
 # tidy tuesday 23rd March 2021
 
-rm(list=ls())
 
 # Install packages and data
 install.packages("tidytuesdayR")
@@ -37,10 +36,13 @@ roll_calls %>% count(rcid) %>%
 # does this indicate any policy differences
 # explore differences in voting between Trump & Obama presidencies
 
-# filter to trump presidential term
+# filter roll_call data to 2019 only
+
 
 roll1 <- roll_calls %>%
   filter(date >= "2017-01-20" & date <= "2019-12-31") # switched to trump term
+
+#reviewed - there are only 90 observations - the UN only convenes in dec!
 
 #simplify dates to year only - separate column then select out
 
@@ -55,12 +57,11 @@ roll2 <- roll1 %>%
 # next join issues and unvotes with roll2
 ## also filtered for countries of interest
 
-
 un_voting <- roll2 %>% 
   left_join(issues, by = 'rcid') %>% 
   left_join(unvotes, by = 'rcid') %>% 
   select(-(country_code)) %>% 
-  filter(issue != (is.na = TRUE))
+  filter(issue != (is.na = TRUE)) %>% 
 
 # ready for some exploratory analysis and visualisation
 
@@ -68,20 +69,9 @@ issue_voting <- un_voting %>%
   group_by(issue, country) %>% 
   count(vote)
 
-# simpler single table - keep if can use for visualisation and delete other
+# simpler single table - keep if can use for visualation and delete other
 # need to produce wider table
 
 issue_voting1 <- issue_voting %>%
   pivot_wider(names_from = vote, values_from = n)
-
-issue_voting1 %>%
-  filter(country %in% c('United States', 'Israel', 
-                        'United Kingdom', 'Saudi Arabia')) %>% 
-  ggplot(aes(country, yes))+
-  geom_col(aes(fill = issue))+
-  coord_flip()
-  facet_wrap(~issue)+
-  theme(legend.position = 'NULL')
-
-
   
