@@ -2,7 +2,8 @@
 
 # load tidied data
 
-issue_voting <- read_csv('issue_voting.csv')
+library(tidyverse)
+issue_voting <- read_csv("2021_03_23/Data/issue_voting.csv")
 
 # visualisation
 
