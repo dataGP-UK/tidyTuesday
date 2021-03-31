@@ -6,6 +6,9 @@
 ### only if uses imgSrc as a variable - duplicate images for same
 ### products
 
-
+sephora %>% 
+  group_by(product, imgAlt) %>% 
+  count() %>% 
+  filter(n>1)
 
 
