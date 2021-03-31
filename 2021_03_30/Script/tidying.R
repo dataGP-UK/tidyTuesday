@@ -13,3 +13,12 @@ allShades %>%
 ### for (brand, product, description) due to multiple image urls for 
 ### same product 
 
+# create master table for brand, product, description by selecting relevant
+# columns and filtering for distinct/unique observations
+# test this against other dataframes to check relationship to foreign keys
+
+master <- allShades %>% 
+  select(brand, product, description) %>% 
+  distinct()
+
+write_csv(master, 'master.csv')
