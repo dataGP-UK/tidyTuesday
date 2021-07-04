@@ -1,0 +1,115 @@
+---
+title: "Tidy Tuesday 2018_04_16"
+output: html_notebook
+---
+
+```{r setup}
+
+library(tidyverse)
+library(here)
+library(readxl)
+library(skimr)
+library(janitor)
+```
+
+```{r read_xlsx}
+global_mortality <- read_excel(path = "2018_04_16/data/global_mortality.xlsx")
+```
+
+Initial Observations
+
+```{r initial_obs}
+
+str(global_mortality)
+skim(global_mortality)
+```
+
+Missing values
+
+country_codes
+
+864 missing. Max length 8 - I thought all codes are 3 letters so explore what 8 character code represents.
+
+Check if any other values for length.
+
+```{r country_codes_NA}
+# what does country_code N/A represent?
+global_mortality[which(is.na(global_mortality$country_code)),] %>% 
+  pull(country) %>% 
+  unique
+```
+
+These are further groupings of countries that may be useful for further analysis.
+
+Also include Scotland, Wales and Northern Ireland - i.e. nations of the UK. If I am going to use country codes then I may need to corrects this.
+
+I can use this vector to subset larger data set if needed.
+
+```{r country_codes_>3}
+
+global_mortality %>% 
+  select(starts_with("country")) %>% 
+  mutate(chars = nchar(country_code)) %>% 
+  filter(!is.na(country_code) & chars > 3) %>% 
+  distinct()
+```
+
+All are 3 letters except "World" with country_code "OWID_WRL"
+
+Year
+
+Check which years data covers
+
+```{r check_years}
+
+unique(global_mortality$year)
+```
+
+27 years - no gaps in data
+
+Terrorism/Conflict
+
+data incomplete - 1398 observations missing in both categories. Explore which countries/ years this applies to and whether should be N/A or zero.
+
+```{r terror_conflict_NA}
+
+terror_NA <- is.na(global_mortality$`Terrorism (%)`)
+conflict_NA <- is.na(global_mortality$`Conflict (%)`)
+identical(terror_NA, conflict_NA)
+global_mortality[terror_NA,] %>% 
+  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
+  group_by(year) %>% 
+  tally
+```
+
+45 countries where there is no data for any years relating to mortality from conflict or terrorism.
+
+1993 - all 228 countries with no data ? why this is the case
+
+```{r no_conflict_terror_data_all_years}
+global_mortality[terror_NA,] %>% 
+  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
+  group_by(country) %>% 
+  tally %>% 
+  filter (n>1)
+```
+
+```{r no_conflict_terror_1993}
+global_mortality %>% 
+  filter(year == 1993) %>% 
+  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
+  filter (is.na(`Conflict (%)`)) 
+```
+
+Confirms that no data in 1993 for any of the 228 'countries' for terror or conflict deaths
+
+Tidy variable names to make manipulation easier - currently non-syntactic
+
+```{r tidy_colnames}
+
+global_mortality <- rename_with(global_mortality, function(x){
+  str_remove_all(x, "( \\(%\\))|\\(|\\)") %>% 
+    tolower %>% 
+    str_replace_all(" |\\/", "_")
+})
+```
