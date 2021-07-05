@@ -287,6 +287,8 @@ global_mortality_long <-
 # global_mortality %>% select(-c(1:3))
 ```
 
+#### Save objects as binary files
+
 ```{r save_tidy_data, eval = FALSE}
 save(... = global_mortality_long, 
      file = "2018_04_16/data/global_mortality_long.rda")
@@ -294,3 +296,46 @@ save(... = global_mortality_long,
 save(... = global_mortality, 
      file = "2018_04_16/data/global_mortality.rda")
 ```
+
+#### Save master file as csv
+
+```{r}
+write_csv(global_mortality, "2018_04_16/data/global_mortality.csv")
+
+```
+
+#### Subset master file and save 
+
+```{r all_countries}
+all_countries_mortality <- 
+  global_mortality_long %>% 
+  filter(!country %in% na_country_code)
+
+save(... = all_countries_mortality, file = "2018_04_16/data/all_countries_mortality.rda"
+```
+
+```{r grouped}
+grouped_mortality <- 
+  global_mortality_long %>% 
+  filter(country %in% na_country_code & !country %in% c("England", "Wales", 
+                                 "Scotland", "Northern Ireland"))
+
+save(... = grouped_mortality, file = "2018_04_16/data/grouped_mortality.rda")
+```
+
+```{r UK}
+united_kingdom <- 
+  global_mortality_long %>% 
+  filter(country %in% c("United Kingdom", "England", "Scotland", "Wales",
+                        "Northern Ireland", "Western Europe", "World"))
+
+save(... = united_kingdom, file = "2018_04_16/data/united_kingdom_mortality.rda")
+```
+
+## Tidy up environment
+
+```{r}
+rm(cor_mortality, NK, conflict_NA, terror_NA, na_country_code)
+```
+
+##  
