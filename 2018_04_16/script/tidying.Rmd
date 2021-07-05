@@ -16,7 +16,7 @@ library(janitor)
 global_mortality <- read_excel(path = "2018_04_16/data/global_mortality.xlsx")
 ```
 
-Initial Observations
+# Initial Observations
 
 ```{r initial_obs}
 
@@ -24,29 +24,43 @@ str(global_mortality)
 skim(global_mortality)
 ```
 
-Missing values
+## Tidy variable names 
 
-country_codes
+To make manipulation easier - currently non-syntactic
 
-864 missing. Max length 8 - I thought all codes are 3 letters so explore what 8 character code represents.
+```{r tidy_colnames}
 
-Check if any other values for length.
+global_mortality <- rename_with(global_mortality, function(x){
+  str_remove_all(x, "( \\(%\\))|\\(|\\)") %>% 
+    tolower %>% 
+    str_replace_all(" |\\/|-", "_")
+})
+```
+
+## Missing values
+
+### Explicit
+
+#### country_codes
+
+864 country_codes 'missing'.
+
+Also maximum length is 8 characters - I thought all codes are 3 letters so need to explore what codes \>3 characters represent.
 
 ```{r country_codes_NA}
 # what does country_code N/A represent?
-global_mortality[which(is.na(global_mortality$country_code)),] %>% 
+na_country_code <- 
+  global_mortality[which(is.na(global_mortality$country_code)),] %>% 
   pull(country) %>% 
   unique
+na_country_code
+# vector created to use when filtering global_mortality dataset
 ```
 
 These are further groupings of countries that may be useful for further analysis.
 
-Also include Scotland, Wales and Northern Ireland - i.e. nations of the UK. If I am going to use country codes then I may need to corrects this.
-
-I can use this vector to subset larger data set if needed.
-
 ```{r country_codes_>3}
-
+# check country codes > 3 characters
 global_mortality %>% 
   select(starts_with("country")) %>% 
   mutate(chars = nchar(country_code)) %>% 
@@ -56,39 +70,38 @@ global_mortality %>%
 
 All are 3 letters except "World" with country_code "OWID_WRL"
 
-Year
-
-Check which years data covers
+#### year
 
 ```{r check_years}
 
 unique(global_mortality$year)
 ```
 
-27 years - no gaps in data
+27 years - no gaps in data. From 1990 to 2016.
 
-Terrorism/Conflict
+#### terrorism/conflict
 
-data incomplete - 1398 observations missing in both categories. Explore which countries/ years this applies to and whether should be N/A or zero.
+1398 observations missing in both categories.
+
+Explore which countries/ years this applies to and whether should be N/A or zero.
 
 ```{r terror_conflict_NA}
 
-terror_NA <- is.na(global_mortality$`Terrorism (%)`)
-conflict_NA <- is.na(global_mortality$`Conflict (%)`)
+terror_NA <- is.na(global_mortality$terrorism)
+conflict_NA <- is.na(global_mortality$conflict
+# check if missing data relates to same observations
 identical(terror_NA, conflict_NA)
+
 global_mortality[terror_NA,] %>% 
-  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
+  select(starts_with("country"), "year", contains(c("conflict", "terrorism"))) %>% 
   group_by(year) %>% 
   tally
+
 ```
-
-45 countries where there is no data for any years relating to mortality from conflict or terrorism.
-
-1993 - all 228 countries with no data ? why this is the case
 
 ```{r no_conflict_terror_data_all_years}
 global_mortality[terror_NA,] %>% 
-  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
+  select(starts_with("country"), "year", contains(c("conflict", "terrorism"))) %>% 
   group_by(country) %>% 
   tally %>% 
   filter (n>1)
@@ -97,19 +110,183 @@ global_mortality[terror_NA,] %>%
 ```{r no_conflict_terror_1993}
 global_mortality %>% 
   filter(year == 1993) %>% 
-  select(starts_with("country"), "year", contains(c("Conflict", "Terrorism"))) %>% 
-  filter (is.na(`Conflict (%)`)) 
+  select(starts_with("country"), "year", contains(c("conflict", "terrorism"))) %>% 
+  filter (is.na(conflict)) 
 ```
 
-Confirms that no data in 1993 for any of the 228 'countries' for terror or conflict deaths
+45 countries where there is no data for any years relating to mortality from conflict or terrorism.
 
-Tidy variable names to make manipulation easier - currently non-syntactic
+In the year 1993 - all 228 countries had no data for either of these categories. Not evident why this was the case.
 
-```{r tidy_colnames}
+------------------------------------------------------------------------
 
-global_mortality <- rename_with(global_mortality, function(x){
-  str_remove_all(x, "( \\(%\\))|\\(|\\)") %>% 
-    tolower %>% 
-    str_replace_all(" |\\/", "_")
-})
+### Implicit
+
+#### Is mortality data complete?
+
+Check if the mortality figures for each country and year add up to 100% . Are there deaths where cause not evident or recorded. How does this vary between countries and years.
+
+```{r calculate_unspecified}
+# subtract % of all causes from 100 for each country and year
+global_mortality <-
+  global_mortality %>%
+  mutate(unspecified = 100 - rowSums(across(cardiovascular_diseases:terrorism),
+                                       na.rm = T))
+```
+
+```{r}
+global_mortality %>% 
+  group_by(country) %>% 
+  summarise(unspecified = sum(unspecified, na.rm = TRUE)) %>% 
+  filter(unspecified < 0) %>% 
+  mutate(country = fct_reorder(country, unspecified)) %>% 
+  ggplot(aes(y = country, x = unspecified))+
+  geom_col()
+```
+
+There appear to be some 10 countries where mortality adds up to more than 100%. This will affect the validity of results including these countries. Further exploration of their data is indicated.
+
+```{r North_Korea}
+global_mortality %>% 
+  filter(country == "North Korea" & unspecified < 0) 
+```
+
+It appears that deaths from 'nutritional_deficiencies' and 'protein-energy_malnutrition' may be double counted resulting in total mortality \>100%. Q: is it valid to remove 'protein-energy_malnutrition' as a variable??
+
+Explore across entire data set to see if this pattern is repeated.
+
+#### Exploration of correlation between variables
+
+```{r correlation_matrix}
+cor_mortality <- cor(global_mortality[, c("nutritional_deficiencies", 
+                         "protein_energy_malnutrition",
+                         "lower_respiratory_infections", "tuberculosis",
+                         "respiratory_diseases", "diarrheal_diseases",
+                         "digestive_diseases", "intestinal_infectious_diseases",
+                         "heat_related_hot_and_cold_exposure", "fire",
+                         "natural_disasters")])
+
+```
+
+```{r}
+corrplot::corrplot(corr = cor_mortality)
+```
+
+Strong correlation across entire dataset between "nutritional_deficiencies" and "protein-energy_malnutrition". Seems reasonable to remove the more specific "protein-energy_malnutrition" variable on the assumption that these deaths are included under "nutritional_deficiencies
+
+```{r remove_redundant_variable}
+#check that mortality from nutritional_deficiencies is > that from protein_energy_malnutrition across the data set
+
+global_mortality %>%
+  filter(protein_energy_malnutrition > nutritional_deficiencies)
+# zero cases so this is further evidence of 'double counting'
+
+global_mortality$protein_energy_malnutrition <- NULL
+```
+
+#### Re-evaluate mortality data completeness
+
+Now repeat previous code to assess completeness of data across rows
+
+```{r}
+global_mortality <-
+  global_mortality %>%
+  mutate(unspecified = 100 - rowSums(across(cardiovascular_diseases:terrorism),
+                                       na.rm = T))
+```
+
+```{r}
+global_mortality %>% 
+  group_by(country) %>% 
+  summarise(unspecified = sum(unspecified, na.rm = TRUE)) %>% 
+  filter(unspecified < 0) %>% 
+  mutate(country = fct_reorder(country, unspecified)) %>% 
+  ggplot(aes(y = country, x = unspecified))+
+  geom_col()
+```
+
+Mauritius is still an outlier.
+
+```{r Mauritius}
+global_mortality %>% 
+  filter(country == "Mauritius" & unspecified < 0) 
+
+```
+
+Most years report total mortality \>100% - no obvious pattern. Explore further with correlation matrix
+
+```{r}
+
+global_mortality %>% 
+  filter(country == "Mauritius") %>% 
+  select(contains(c("neonatal_deaths","lower_respiratory_infections", "meningitis", "intestinal_infectious_diseases", "diarrheal_diseases"))) %>% 
+  cor() %>% 
+  corrplot::corrplot()
+```
+
+May be neonatal deaths resulting in double counting for cause of death i.e. infection vs. type of death ie. neonatal.
+
+Explore across entire dataset to explore if a wider issue
+
+```{r}
+global_mortality %>% 
+  select(contains(c("neonatal_deaths","lower_respiratory_infections", "meningitis", "intestinal_infectious_diseases", "diarrheal_diseases"))) %>% 
+  cor() %>% 
+  corrplot::corrplot()
+```
+
+Some correlation exists but not as strong as for Mauritius. Not enough evidence to remove any data.
+
+```{r}
+global_mortality[global_mortality$unspecified < 0, ] %>% 
+  group_by(country) %>%
+  tally() %>% 
+  mutate(country = fct_reorder(country, n)) %>% 
+    ggplot(aes(x = n, y = country)) +
+    geom_col()
+```
+
+```{r}
+global_mortality[global_mortality$unspecified < 0, ] %>% 
+  group_by(year) %>%
+  tally()  %>% 
+  ggplot(aes(y = n, x = year))+
+  geom_bar(stat = "identity")
+  
+  
+  # mutate(year = fct_reorder(as.character(year), n)) %>% 
+  #   ggplot(aes(y = year, x = n)) +
+  #   geom_col()
+```
+
+#### Discussion
+
+There is considerable variation between different countries as to how deaths are recorded. This seems to result in deaths being attributed to more than one cause in a significant number of observations. There number of observations where mortality is \>100% has also increased over time. This may be a result of how data is collected.
+
+## Saving data
+
+### Create longer version
+
+```{r pivot_longer}
+
+global_mortality_long <- 
+  global_mortality %>% 
+    pivot_longer(data = ., 
+                 cols = -c(1:3),
+                 names_to = "causes", 
+                 values_to = "percent_total")
+
+
+# global_mortality %>% select(-c(1:3))
+```
+
+```{r save_tidy_data, eval = FALSE}
+save(... = global_mortality_long, 
+     file = "2018_04_16/data/global_mortality_long.rda")
+
+save(... = global_mortality, 
+     file = "2018_04_16/data/global_mortality.rda")
+```
+
+```{}
 ```
