@@ -304,14 +304,14 @@ write_csv(global_mortality, "2018_04_16/data/global_mortality.csv")
 
 ```
 
-#### Subset master file and save 
+#### Subset master file and save
 
 ```{r all_countries}
 all_countries_mortality <- 
   global_mortality_long %>% 
   filter(!country %in% na_country_code)
 
-save(... = all_countries_mortality, file = "2018_04_16/data/all_countries_mortality.rda"
+save(... = all_countries_mortality, file = "2018_04_16/data/all_countries_mortality.rda")
 ```
 
 ```{r grouped}
@@ -338,4 +338,4 @@ save(... = united_kingdom, file = "2018_04_16/data/united_kingdom_mortality.rda"
 rm(cor_mortality, NK, conflict_NA, terror_NA, na_country_code)
 ```
 
-##  
+## 

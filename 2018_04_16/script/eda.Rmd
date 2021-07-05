@@ -1,0 +1,55 @@
+---
+title: "UK Mortality Analysis"
+output: html_notebook
+---
+
+```{r setup}
+
+library(tidyverse)
+```
+
+```{r load_tidy_data}
+load("2018_04_16/data/all_countries_mortality.rda")
+```
+
+Look at most recent data across the world for comparison
+
+```{r}
+all_countries_mortality %>% 
+  filter(year == 2016 & causes != "unspecified") %>% 
+  mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>%
+  ggplot(aes(x = percent_total, group = causes ))+
+  geom_boxplot(aes(y = causes))
+```
+
+explore oldest data available
+
+```{r}
+all_countries_mortality %>% 
+  filter(year == 1990 & causes != "unspecified") %>% 
+  mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>% 
+  ggplot(aes(x = percent_total, group = causes ))+
+  geom_boxplot(aes(y = causes))
+```
+
+```{r message=FALSE}
+unnatural <- c("road_accidents", "suicide", "homicide", "drowning",
+               "alcohol_disorders", "drug_disorders", "fire",
+               "heat_related_hot_and_cold_exposure", "natural_disasters",
+               "conflict", "terrorism")
+
+all_countries_mortality %>% 
+  filter(year %in% c(1990, 2016) & causes != "unspecified") %>%
+  # mutate(causes = fct_collapse(causes, "unnatural" = unnatural)) %>%
+  mutate(causes = fct_lump(causes, n = ))
+  mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>% 
+  mutate(year = factor(year)) %>% 
+  group_by(year, causes) %>% 
+  summarise(median_percent = median(percent_total, na.rm = TRUE)) %>% 
+  ggplot(aes(x = median_percent, y = causes))+
+  geom_point(aes(color = year)) +
+  scale_color_discrete(drop = TRUE)
+  
+
+
+```
