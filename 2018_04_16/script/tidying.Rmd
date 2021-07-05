@@ -24,7 +24,7 @@ str(global_mortality)
 skim(global_mortality)
 ```
 
-## Tidy variable names 
+## Tidy variable names
 
 To make manipulation easier - currently non-syntactic
 
@@ -35,6 +35,8 @@ global_mortality <- rename_with(global_mortality, function(x){
     tolower %>% 
     str_replace_all(" |\\/|-", "_")
 })
+
+names(global_mortality)
 ```
 
 ## Missing values
@@ -88,23 +90,25 @@ Explore which countries/ years this applies to and whether should be N/A or zero
 ```{r terror_conflict_NA}
 
 terror_NA <- is.na(global_mortality$terrorism)
-conflict_NA <- is.na(global_mortality$conflict
+conflict_NA <- is.na(global_mortality$conflict)
+                     
 # check if missing data relates to same observations
 identical(terror_NA, conflict_NA)
 
 global_mortality[terror_NA,] %>% 
   select(starts_with("country"), "year", contains(c("conflict", "terrorism"))) %>% 
   group_by(year) %>% 
-  tally
+  tally()
 
 ```
 
 ```{r no_conflict_terror_data_all_years}
+
 global_mortality[terror_NA,] %>% 
   select(starts_with("country"), "year", contains(c("conflict", "terrorism"))) %>% 
   group_by(country) %>% 
   tally %>% 
-  filter (n>1)
+  filter (n > 1)
 ```
 
 ```{r no_conflict_terror_1993}
@@ -147,11 +151,19 @@ global_mortality %>%
 There appear to be some 10 countries where mortality adds up to more than 100%. This will affect the validity of results including these countries. Further exploration of their data is indicated.
 
 ```{r North_Korea}
-global_mortality %>% 
-  filter(country == "North Korea" & unspecified < 0) 
+NK <- global_mortality %>% 
+  filter(country == "North Korea" & unspecified < 0)
+NK
 ```
 
 It appears that deaths from 'nutritional_deficiencies' and 'protein-energy_malnutrition' may be double counted resulting in total mortality \>100%. Q: is it valid to remove 'protein-energy_malnutrition' as a variable??
+
+```{r}
+NK %>% 
+  ggplot(aes(x = protein_energy_malnutrition, y = nutritional_deficiencies))+
+  geom_point()+
+  geom_abline()
+```
 
 Explore across entire data set to see if this pattern is repeated.
 
@@ -252,16 +264,11 @@ global_mortality[global_mortality$unspecified < 0, ] %>%
   tally()  %>% 
   ggplot(aes(y = n, x = year))+
   geom_bar(stat = "identity")
-  
-  
-  # mutate(year = fct_reorder(as.character(year), n)) %>% 
-  #   ggplot(aes(y = year, x = n)) +
-  #   geom_col()
 ```
 
 #### Discussion
 
-There is considerable variation between different countries as to how deaths are recorded. This seems to result in deaths being attributed to more than one cause in a significant number of observations. There number of observations where mortality is \>100% has also increased over time. This may be a result of how data is collected.
+There appears to be considerable variation between different countries as to how causes of death are recorded. This seems to result in deaths being attributed to more than one cause in a significant number of observations. The number of observations where combined mortality is \>100% has increased over time. This may be a result of how data is collected.
 
 ## Saving data
 
@@ -286,7 +293,4 @@ save(... = global_mortality_long,
 
 save(... = global_mortality, 
      file = "2018_04_16/data/global_mortality.rda")
-```
-
-```{}
 ```
