@@ -1,5 +1,5 @@
 ---
-title: "UK Mortality Analysis"
+title: "Mortality Analysis"
 output: html_notebook
 ---
 
@@ -14,42 +14,132 @@ load("2018_04_16/data/all_countries_mortality.rda")
 
 Look at most recent data across the world for comparison
 
-```{r}
+```{r warning=FALSE}
 all_countries_mortality %>% 
   filter(year == 2016 & causes != "unspecified") %>% 
   mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>%
   ggplot(aes(x = percent_total, group = causes ))+
-  geom_boxplot(aes(y = causes))
+  geom_boxplot(aes(y = causes))+
+  labs(title = "2016 Global Mortality")
 ```
 
 explore oldest data available
 
-```{r}
+```{r warning=FALSE}
 all_countries_mortality %>% 
   filter(year == 1990 & causes != "unspecified") %>% 
   mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>% 
   ggplot(aes(x = percent_total, group = causes ))+
-  geom_boxplot(aes(y = causes))
+  geom_boxplot(aes(y = causes))+
+  labs(title = "1990 Global Mortality")
 ```
 
 ```{r message=FALSE}
 unnatural <- c("road_accidents", "suicide", "homicide", "drowning",
                "alcohol_disorders", "drug_disorders", "fire",
                "heat_related_hot_and_cold_exposure", "natural_disasters",
-               "conflict", "terrorism")
+               "conflict", "terrorism", "nutritional_deficiencies")
 
 all_countries_mortality %>% 
   filter(year %in% c(1990, 2016) & causes != "unspecified") %>%
-  # mutate(causes = fct_collapse(causes, "unnatural" = unnatural)) %>%
-  mutate(causes = fct_lump(causes, n = ))
-  mutate(causes = fct_reorder(causes, percent_total, na.rm = TRUE)) %>% 
+  mutate(causes = fct_collapse(causes, "unnatural" = unnatural)) %>%
+  mutate(causes = fct_reorder(causes, percent_total, .fun = mean, na.rm = TRUE)) %>% 
   mutate(year = factor(year)) %>% 
   group_by(year, causes) %>% 
-  summarise(median_percent = median(percent_total, na.rm = TRUE)) %>% 
+  summarise(median_percent = mean(percent_total, na.rm = TRUE)) %>% 
   ggplot(aes(x = median_percent, y = causes))+
   geom_point(aes(color = year)) +
   scale_color_discrete(drop = TRUE)
-  
-
 
 ```
+
+Between 1990 and 2016 the percentage of mortality due to different causes globally has changed.
+
+There are relatively less people dying in the neonatal period as well as from HIV/AIDS, diarrhoeal diseases and lower respiratory tract infections. There are relatively more dying from cancer, cardiovascular diseases, diabetes and dementia.
+
+This indicates as shift from death due to infectious disease, often at an early age, towards death due to chronic diseases, cancer and the consequences of ageing.
+
+Explore neonatal deaths vs cancer deaths
+
+```{r message=FALSE}
+all_countries_mortality %>% 
+  group_by(causes, year) %>% 
+  filter(causes %in% c("neonatal_deaths", "cancers")) %>% 
+  summarise(mean = mean(percent_total, na.rm = TRUE)) %>% 
+  ggplot(aes(x = year, y = mean))+
+  geom_point(aes(colour = causes))
+  
+```
+
+```{r message=FALSE}
+load("2018_04_16/data/global_mortality.rda")
+
+global_mortality %>% 
+  group_by(country) %>% 
+  summarise(neonatal_deaths = mean(neonatal_deaths, na.rm = TRUE),
+            cancers = mean(cancers, na.rm = TRUE)) %>% 
+  ggplot(aes(neonatal_deaths, cancers))+
+  geom_point()+
+  geom_smooth(method = "loess")
+```
+
+Countries with higher rates of neonatal death tend to have lower rates of death by cancer. This appears linear between 0-10% neonatal then levels off as neonatal deaths increase. It is likely that as more people survive the neonatal period and progress eventually into adulthood, these people become more likely to die from other causes such as cancer and chronic disease.
+
+------------------------------------------------------------------------
+
+Explore data by area over time
+
+Plan/ subdivide data into larger groups.
+
+```{r}
+load("2018_04_16/data/grouped_mortality.rda")
+```
+
+Filter for larger areas.
+
+```{r}
+groupings <- c(4,5,8,9,14,18,19,20,21,22,25,27)
+
+groupings <- unique(grouped_mortality$country)[groupings]
+
+groupings <- 
+  grouped_mortality %>% 
+  filter(country %in% groupings)
+```
+
+Create plots
+
+```{r}
+groupings %>% 
+  filter(causes == "hiv_aids") %>% 
+  ggplot(aes(x = year, y = percent_total))+
+  geom_point(aes(colour = country), size = 1)+
+  scale_y_continuous(trans = "log10")
+```
+
+Previous boxplots indicate low mean and median for % death due to HIV but a large number of high outlying values. The plot above shows that these outlying values relate to Sub-Saharan Africa which has born the brunt of the HIV/AIDS epidemic. However there are signs that this is changing with the % of deaths due to HIV/AIDS starting to fall since a peak in 2006.
+
+```{r function, warning=FALSE}
+
+cause <- unique(groupings$causes)
+
+map(cause, function(x){
+  groupings %>% 
+  filter(causes %in% x) %>% 
+    mutate(country = fct_reorder(country, 
+                                 percent_total, 
+                                 tail, 
+                                 n = 1, 
+                                 .desc = TRUE )) %>%
+  ggplot(aes(x = year, y = percent_total))+
+  geom_line(aes(colour = country))+
+  labs(title = x)
+})
+
+```
+
+Really pleased with this. Use iteration/functional programming to quickly evaluate time:series plots.
+
+Colour scheme not ideal as could do with more contrast to make it clearer to me what is going on. Not sure whether best to have legend relate to first or final year data. If first ?move legend to left of plot.
+
+Not final plots for presentation but good for exploration. I now see why iteration important in exploration. Able to create multiple plots with little effort and able to alter code quickly and with ease.
