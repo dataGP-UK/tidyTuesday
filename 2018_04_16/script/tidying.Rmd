@@ -299,31 +299,44 @@ save(... = global_mortality,
 
 #### Save master file as csv
 
-```{r}
+```{r eval=FALSE}
 write_csv(global_mortality, "2018_04_16/data/global_mortality.csv")
 
 ```
 
 #### Subset master file and save
 
-```{r all_countries}
+```{r all_countries, eval=FALSE}
 all_countries_mortality <- 
-  global_mortality_long %>% 
+  global_mortality %>% 
   filter(!country %in% na_country_code)
 
 save(... = all_countries_mortality, file = "2018_04_16/data/all_countries_mortality.rda")
+
+all_countries_mortality_long <- 
+  global_mortality_long %>% 
+  filter(!country %in% na_country_code)
+
+save(... = all_countries_mortality_long, file = "2018_04_16/data/all_countries_mortality_long.rda")
 ```
 
-```{r grouped}
-grouped_mortality <- 
+```{r grouped, eval=FALSE}
+grouped_mortality_long <- 
   global_mortality_long %>% 
+  filter(country %in% na_country_code & !country %in% c("England", "Wales", 
+                                 "Scotland", "Northern Ireland"))
+
+save(... = grouped_mortality_long, file = "2018_04_16/data/grouped_mortality_long.rda")
+
+grouped_mortality <- 
+  global_mortality %>% 
   filter(country %in% na_country_code & !country %in% c("England", "Wales", 
                                  "Scotland", "Northern Ireland"))
 
 save(... = grouped_mortality, file = "2018_04_16/data/grouped_mortality.rda")
 ```
 
-```{r UK}
+```{r UK, eval=FALSE}
 united_kingdom <- 
   global_mortality_long %>% 
   filter(country %in% c("United Kingdom", "England", "Scotland", "Wales",
