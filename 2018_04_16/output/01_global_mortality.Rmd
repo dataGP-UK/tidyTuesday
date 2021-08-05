@@ -55,8 +55,12 @@ regional_mortality<-
 ```
 
 ```{r line_plots_1}
+# pivot dataframe longer
+
+## create vector to use with "names_to" argument
 cause <- names(regional_mortality[c(3:8)])
 
+## pivot regional mortality longer
 regional_mortality_long <- 
   regional_mortality %>% 
   pivot_longer(data = ., cols = 3:8, names_to = "cause", values_to = "percent")
@@ -65,6 +69,9 @@ regional_mortality_long <-
 ```
 
 ```{r line_plots_2}
+# plot line plots for each cause of death.
+
+## iterate a function that produces a line plot for each cause of death
 map(cause, function(x){
   regional_mortality_long %>% 
   filter(cause %in% x) %>% 
@@ -80,6 +87,10 @@ map(cause, function(x){
 ```
 
 ```{r bar_plots}
+# produce bar charts with 'fill' position to show proportion of deaths in multiple regions
+
+## create a filtered data frame with only the regions("countries") of interest selected
+## coerce to factors and change order of levels to ensure facetted plot shows regions in correct order 
 
 filtered <- regional_mortality_long %>% 
   filter(country %in% c("North America", "Western Europe", "South Asia", 
@@ -90,27 +101,85 @@ filtered <- regional_mortality_long %>%
         c("Sub-Saharan Africa", "South Asia", "North Africa and Middle East",
            "East Asia","North America", "Western Europe" )))
 
-filtered %>%
+## final plot: produce a facteted bar chart with position = "fill"
+final_plot <- 
+  filtered %>%
   ggplot(aes(x = year, y = percent, fill = cause))+
   geom_col(position = "fill", width = 1)+
   facet_wrap(~ country)+
   theme_bw()+
   scale_y_continuous(labels = scales::"percent")+
-  labs(title = "Pattern of mortality in developing countries approaching that in developed",
-       subtitle = "Sub-Saharan Africa remains different with mortality from infectious disease & neonatal death still high",
+  labs(title = "Pattern of mortality in developing countries approaching that of developed countries",
+       subtitle = "Sub-Saharan Africa remains an outlier with neonatal deaths and mortality from infectious diseases still high",
        y = "Percentage of deaths",
        x = "Year",
-       caption = "Data from github.com/rfordatascience/tidytuesday/tree/master/data/2018/2018-04-16")+
+       caption = "Data from: Tidy Tuesday: A weekly data project aimed at the R ecosystem. https://github.com/rfordatascience/tidytuesday.")+
   scale_fill_discrete(name = "Causes of death",
                       labels = c("Cancers", "Chronic Diseases", 
                                  "Infectious Diseases", "Neonatal & Maternal",
                                  "Unnatural", "Unspecified"))
 
 
-
+final_plot
 
 ```
 
 ```{r}
-ggsave("2018_04_16/output/global_mortality_1.png", width = 10, height = 5)
+ggsave("2018_04_16/output/global_mortality_1.png", width = 10, height = 6)
+```
+
+Comparison of death from unnatural causes between. Look at all the data first then decide on comparisons and types of plots.
+
+```{r}
+load("2018_04_16/data/all_countries_mortality.rda")
+```
+
+```{r}
+unnatural_deaths <- all_countries_mortality %>% 
+  select(1:3, all_causes[["unnatural"]])
+```
+
+3 groups of unnatural: homicide/suicide/alcohol/drugs & terrorism/conflict/natural disaster & drowning/road accidents/fire
+
+Individual acts perpetrated, large scale events, accidental death.
+
+ie. accidental / non-accidental (individual / population
+
+Unnatural ( individual non_accidental) deaths USA vs. UK
+
+```{r}
+unnatural_deaths %>% 
+  select(1:3, contains(match = c("suicide", "homicide", "alcohol", "drug"))) %>% 
+  filter(country %in% c("United States", "United Kingdom", "Russia", "France")) %>%
+  ggplot(aes(x = year, y = suicide))+
+  geom_line(aes(colour = country))+
+  ylim(0,4)
+```
+
+What factors are associated with increase deaths from suicide
+
+```{r}
+load("2018_04_16/data/all_countries_mortality_long.rda")
+
+```
+
+```{r}
+# plot alcohol consumption vs suicide
+library(corrplot)
+
+test <- all_countries_mortality %>% 
+  select("road_accidents", "liver_disease", "hiv_aids",
+        "suicide", "homicide", "drowning",
+         "alcohol_disorders", "fire", "drug_disorders") 
+  
+
+test <- cor(test)
+corrplot(test,diag = FALSE,
+        method = "shade", addshade = "positive")
+
+all_countries_mortality %>% 
+  filter(year == 2016) %>% 
+  ggplot(aes(suicide, alcohol_disorders))+
+  geom_point()+
+  geom_smooth(method = "lm")
 ```

@@ -94,6 +94,7 @@ Plan/ subdivide data into larger groups.
 
 ```{r}
 load("2018_04_16/data/grouped_mortality.rda")
+load("2018_04_16/data/grouped_mortality_long.rda)
 ```
 
 Filter for larger areas.
