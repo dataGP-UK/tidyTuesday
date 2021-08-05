@@ -65,14 +65,14 @@ gb_medal_split <- gb_medal %>%
   tally %>% 
   mutate(total_medals = sum(n))
 
-gb_medal_split %>% 
+gb_medal_plot <- gb_medal_split %>% 
   ggplot(aes(x = fct_reorder(sport, total_medals),y = n))+
   geom_col(aes(fill = fct_relevel(medal, c("Bronze", "Silver", "Gold"))), 
            colour = "black")+
   coord_flip()+
   scale_fill_manual(values=c("#cd7f32", "#C0C0C0", "#FFDF00")) +
   labs(x = "Sport", y = "Number of Medals Won",
-       title = "Medals won by GB Summer Olympic team from 1900-2016",
+       title = "Medals won by GB Summer Olympics team (1896-2016)",
        subtitle = "Cycling, Swimmming, Rowing and Sailing are most successful sports behind Athletics",
        caption = "Data from https://github.com/rfordatascience/tidytuesday.") +
   theme(legend.title = element_blank(), 
@@ -84,3 +84,6 @@ gb_medal_split %>%
         legend.key.size = unit(0.5, 'cm'))+
   guides(fill =  guide_legend(nrow = 1,reverse = TRUE))
 
+gb_medal_plot
+
+ggsave("2021_07_27_Olympic_Medals/gb_medal_plot.png", width = 10, height = 6)
