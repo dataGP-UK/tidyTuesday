@@ -1,0 +1,329 @@
+---
+title: "Infrastructure Data from BEA"
+output: html_notebook
+---
+
+Tidy Tuesday from 8th August 2021. Data from Bureau of Economic Affairs.
+
+Appears to relate to infrastructure in the US and investment from public and private sector into this.
+
+Data is available from Tidy Tuesday site as well as direct from BEA as an excel spreadsheet.
+
+I will use pre-prepared data but also practice downloading xslx file and then reading this and tidying it using R.
+
+<https://github.com/rfordatascience/tidytuesday/tree/master/data/2021/2021-08-10>
+
+```{r setup}
+knitr::opts_chunk$set()
+library(tidyverse)
+library(readxl)
+library(here)
+library(skimr)
+```
+
+# Tidying Raw Data
+
+Copied from tidy tuesday site - to go through line by line and comment on the code to understand what processes performed.
+
+```{r}
+raw_df  <- readxl::read_excel("2021_08_10_Infrastructure/infrastructure-data-may-2020.xlsx", sheet = 2, skip = 2)
+```
+
+> Q: How do I find out how many sheets are present in an .xlsx file?
+
+```{r tidy_investment}
+
+gross_inv <- raw_df %>%
+  # 1st 2 columns not named so readxl gave them names ...1 &...2
+  # use rename function to give them syntactic and appropriate names
+  rename(group = ...1, category = ...2) %>% 
+  # appears to be 1 value missing in each category.
+  # these all relate to 1 observation that has no data (r106 blank row in sheet)
+  # filter data to remove this row
+  filter(!is.na(category)) %>% 
+  # different 'levels' of category are all entered in one column
+  # create a new column that shows the meta_cat i.e. a 'higher level' category
+  # these meta-categories are all in rows that have a value in the group column
+  # hence '!is.na(group) in ifelse function
+  # if not NA then value in 'category' used. if NA then 'NA_character' entered
+  mutate(
+    meta_cat = if_else(!is.na(group), category, NA_character_), 
+    group_num = group,
+  # by default appear at right end on datsframe
+  # '.after' function controls where they are placed
+    .after = "category"
+    ) %>%
+  # some columns contain NA values
+  # 'fill' function will replace NAs with the appropriate value
+  fill(meta_cat, group_num) %>%
+  # data not tidy as there are multiple date columns
+  # these should be a single variable
+  # use 'pivot_longer' to re-shape the data
+  # years converted to character so use 'name_transform' used to convert integers
+  pivot_longer(names_to = "year", values_to = "gross_inv", cols = `1947`:`2017`,
+               names_transform = list(year = as.integer)
+               ) %>%
+  # data is duplicated. Rows that have group value still can be filtered out
+  # this is why 'group_num' variable created and values added using 'fill'
+  # so that original column of 'group' can be used to filter the data
+  filter(is.na(group)) %>% 
+  select(-group)
+
+```
+
+```{r}
+gross_inv %>% write_csv("2021_08_10_Infrastructure/investment.csv")
+rm(gross_inv, raw_df)
+```
+
+```{r upload_data}
+tuesdata <- tidytuesdayR::tt_load('2021-08-10')
+ipd <- tuesdata$ipd
+chain_investment <- tuesdata$chain_investment
+investment <- tuesdata$investment
+```
+
+## Exploration
+
+Get to know each of the datasets. Data dictionaries available on github page.
+
+### investment
+
+```{r investment_explore}
+glimpse(investment)
+
+```
+
+```{r}
+skim(investment)
+```
+
+```{r}
+meta_cat_plot <- function(cat){
+  investment %>% 
+  filter(meta_cat == cat) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = cat)
+}
+cat <- investment$meta_cat %>% unique
+```
+
+```{r}
+meta_cat_plot_list <- map(cat, meta_cat_plot)
+meta_cat_plot_list 
+```
+
+```{r}
+categories <- investment$category %>% unique
+categories
+```
+
+```{r}
+meta_categories <- investment$meta_cat %>% unique
+funding <- c("Federal", "Private", "S&L")
+
+meta_categories
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Total infrastructure" &
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(year, gross_inv, colour = category))+
+  labs(title = "Total infrastructure")
+```
+
+Most investment is in basic infrastructure which includes conservation & development, power, sewers, transportation and water.
+
+Social infrastructure is the next highest area of investment and this includes education, health and public safety.
+
+The lowest investment is in digital infrastructure. The data includes office buildings, private communications equipment & structures, private computers and private software.
+
+Increases in social infrastructure investment appeared to be increasing exponentially until around 2008 when there was a drop of investment into infrastructure. Basic infrastructure investment seems to be increasing exponentially as does digital despite a considerable drop around 2000.
+
+```{r}
+investment %>% 
+  group_by(group_num) %>% 
+  filter(meta_cat == "Total infrastructure" &
+           category %in% funding) %>%
+  ggplot()+
+  geom_line(aes(year, gross_inv, colour = category))+
+  labs(title = "Total Infrastructure")
+```
+
+There appears to be more private investment into US infrastructure and this continues to increase despite a slow down in state and local government investment. This private investment appears to be volatile with a couple of dips noted following periods of higher investment (2000, 2008). State and local government investment into infrastructure fell after 2008.
+
+Federal investment into infrastructure is very low.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Total basic infrastructure" &
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Total basic infrastructure")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Total basic infrastructure" &
+           category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Total basic infrastructure")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Water supply") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Water supply")
+```
+
+Most investment into water infrastructure is state and local government and this increases each year although has decreased since 2008/2009. Private investment is low and there is no federal investment.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Sewer and waste") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Sewer and waste")
+```
+
+Consider combine water and sewer - looks similar pattern of investment. Plot both together to compare
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Conservation and development") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Conservation and development")
+```
+
+Gross investment lower in conservation and development hence large amount of variability year on year.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Power") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Power")
+```
+
+Investment in power infrastructure is predominantly private and increasing exponentially with some year to year variation. Investment fell after peaks in 2000 and 2008 but has now recovered and continued with exponential growth.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Electric power") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Electric power")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Natural gas /petroleum power") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Natural gas /petroleum power")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Transportation" & 
+           category %in% c(funding, "Other private", "Other federal")) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Transportation")
+```
+
+Investment into transport infrastructure is predominantly from state and local government. Growth has been consistent with an increase in private investment over recent years although this is increasing at a slow rate.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Transportation" & 
+           !category %in% c(funding, "Other private", "Other federal")) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Transportation")
+```
+
+Most of the investment into transportation infrastructure is into highways and streets and this continues to increase year on year. There has been a slower increase in investment into transit infrastructure.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Highways and streets") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Highways and streets")
+```
+
+Most investment into highways and streets infrastructure in by state and local government.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Air /water /other transportation") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Air /water /other transportation")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Social" & 
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Social infrastructure")
+```
+
+Investment into social infrastructure is predominantly accounted for by education and health. Investment into both increased rapidly from 1990 to 2008 followed by a significant fall. Education investment has only just reached the level achieved before this fall.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Social" & 
+           category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Social infrastructure")
+```
+
+Social infrastructure investment is predominantly private or from state and local government. It has been increasing since 1980 with a dip in 2008. The pattern is similar to the education/health plot.
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Education") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Education")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Health") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Health")
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Public safety") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Public safety")
+
+```
+
+```{r}
+investment %>% 
+  filter(meta_cat == "Digital") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv, colour = category))+
+  labs(title = "Digital infrastructure")
+```
+
+### Any relationship between variables
