@@ -87,7 +87,7 @@ investment <- tuesdata$investment
 
 Get to know each of the datasets. Data dictionaries available on github page.
 
-### investment
+## investment
 
 ```{r investment_explore}
 glimpse(investment)
@@ -99,19 +99,14 @@ skim(investment)
 ```
 
 ```{r}
-meta_cat_plot <- function(cat){
-  investment %>% 
+meta_cat_plot <- function(df, cat){
+  df %>% 
   filter(meta_cat == cat) %>% 
   ggplot()+
   geom_line(aes(x = year, y = gross_inv, colour = category))+
   labs(title = cat)
 }
 cat <- investment$meta_cat %>% unique
-```
-
-```{r}
-meta_cat_plot_list <- map(cat, meta_cat_plot)
-meta_cat_plot_list 
 ```
 
 ```{r}
@@ -326,4 +321,145 @@ investment %>%
   labs(title = "Digital infrastructure")
 ```
 
-### Any relationship between variables
+## chain_investment
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Total infrastructure" &
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(year, gross_inv_chain, colour = category))+
+  labs(title = "Total infrastructure")
+```
+
+```{r}
+chain_investment %>% 
+  group_by(group_num) %>% 
+  filter(meta_cat == "Total infrastructure" &
+           !category %in% funding) %>%
+  mutate(category = fct_rev(category)) %>% 
+  ggplot()+
+  geom_area(aes(year, gross_inv_chain, fill = category), position = "fill")+
+  labs(title = "Total Infrastructure")
+```
+
+Investment in all areas has increased in real terms but investment into basic infrastructure has fallen as a proportion of total while social remains steady. There has been a real terms increase in digital infrastructure investment.
+
+```{r}
+chain_investment %>% 
+  group_by(group_num) %>% 
+  filter(meta_cat == "Total infrastructure" &
+           category %in% funding) %>%
+  ggplot()+
+  geom_line(aes(year, gross_inv_chain, colour = category))+
+  labs(title = "Total Infrastructure")
+```
+
+```{r}
+chain_investment %>% 
+  group_by(group_num) %>% 
+  filter(meta_cat == "Total infrastructure" &
+           category %in% funding) %>%
+  mutate(category = fct_rev(category)) %>% 
+  ggplot()+
+  geom_area(aes(year, gross_inv_chain, fill = category), position = "fill")+
+  labs(title = "Total Infrastructure")
+```
+
+The proportion of private investment into infrastructure has increase as federal investment decreases and state & local government funding remains fairly constant
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Total basic infrastructure" &
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Total basic infrastructure")
+```
+
+Transportation and power infrastructure investment show the biggest increases in real terms over time.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Power") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Power")
+```
+
+Most investment into power is private.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Electric power") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Electric power")
+```
+
+Most investment into power has been private with a noticeable increase in wind and solar since 2004.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Electric power") %>% 
+  ggplot()+
+  geom_area(aes(x = year, y = gross_inv_chain, fill = category), position = "fill")+
+  labs(title = "Electric power")
+```
+
+No federal investment and proportion S&L investment falling in real terms. Although wind and solar are increasing they still represent a small proportion of overall investment into electrical power infrastructure.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Transportation" & 
+           category %in% c(funding, "Other private", "Other federal")) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Transportation")
+```
+
+Investment into transportation infrastructure is predominantly S&L with a general upward trajectory in real terms although there are some peaks and troughs evident.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Transportation" & 
+           !category %in% c(funding, "Other private", "Other federal")) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Transportation")
+```
+
+Most investment is in highways and streets and the pattern is similar to the pattern of investment into transport infrastructure by S&L.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Social" & 
+           !category %in% funding) %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Social infrastructure")
+```
+
+Education and health infrastructure investment make up the majority of investment into social infrastructure. Health investment continues to increase in real terms while education infrastructure investment is more variable with significant dips - possibly at times of recession.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Education") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Education")
+```
+
+The largest investment is S&L investment into K-12 education. This demonstrates the same pattern as the trends in education investment. In real terms current investment is only just above the peak in the late 1960s. Would be interesting to include population with this data to see what spending per capita is.
+
+```{r}
+chain_investment %>% 
+  filter(meta_cat == "Health") %>% 
+  ggplot()+
+  geom_line(aes(x = year, y = gross_inv_chain, colour = category))+
+  labs(title = "Health")
+```
+
+Real terms infrastructure investment has increase rapidly despite recessions and appears to be mainly accounted for by investment into medical equipment by the private sector. Investment into hospitals appears to be relatively static.
+
+## Questions for further exploration
