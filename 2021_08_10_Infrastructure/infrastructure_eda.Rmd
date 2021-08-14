@@ -339,7 +339,7 @@ chain_investment %>%
            !category %in% funding) %>%
   mutate(category = fct_rev(category)) %>% 
   ggplot()+
-  geom_area(aes(year, gross_inv_chain, fill = category), position = "fill")+
+  geom_area(aes(year, gross_inv_chain, fill = category), position = "stack")+
   labs(title = "Total Infrastructure")
 ```
 
@@ -362,7 +362,7 @@ chain_investment %>%
            category %in% funding) %>%
   mutate(category = fct_rev(category)) %>% 
   ggplot()+
-  geom_area(aes(year, gross_inv_chain, fill = category), position = "fill")+
+  geom_area(aes(year, gross_inv_chain, fill = category), position = "stack")+
   labs(title = "Total Infrastructure")
 ```
 
