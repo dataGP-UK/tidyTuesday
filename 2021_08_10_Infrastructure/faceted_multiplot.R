@@ -331,6 +331,6 @@ ggdraw() +
     x = 0.47, y = 0.25)+
   draw_text(
     text = "Data: Bureau of Economic Analysis",  
-    size = 8,hjust=0,color="#343a40",angle=90,
-    x = 0.025, y = 0.08,vjust=0)
+    size = 8,hjust = 0, color = "#343a40", angle = 90,
+    x = 0.025, y = 0.08, vjust = 0)
 
