@@ -1,0 +1,100 @@
+---
+title: "Star Trek Voice Commands"
+output: html_notebook
+---
+
+```{r setup}
+library(tidyverse)
+library(skimr)
+library(here)
+tuesdata <- tidytuesdayR::tt_load(2021, week = 34)
+computer <- tuesdata$computer
+```
+
+```{r cleaning, eval=FALSE}
+# load package to extract json file
+library(jsonlite)
+
+# set location of file
+url <- "http://www.speechinteraction.org/TNG/teaearlgreyhotdataset.json"
+
+# read json string in: can use parse_json(url(url)) - unsure about difference?
+raw_json <- read_json(url)
+
+# view list structure of json string
+raw_json %>% 
+  listviewer::jsonedit()
+
+clean_df <- raw_json %>% 
+  # multi-level list -> data-frame with list columns
+  enframe() %>% 
+  # use unnest functions from tidyr to convert all lists into a dataframe
+  unnest_longer(value) %>% 
+  unnest_wider(value) %>% 
+  unnest_longer(type) %>% 
+  unnest_longer(domain) %>% 
+  unnest_longer(`sub-domain`) %>% 
+  janitor::clean_names()
+
+clean_df %>% write_csv("2021/2021-08-17/computer.csv")
+```
+
+```{r}
+glimpse(computer)
+skim(computer)
+```
+
+```{r explore_char}
+# too many characters
+computer %>% 
+  group_by(char) %>% 
+  count %>% 
+  arrange(desc(n))
+  
+
+```
+
+Unsure what different abbreviations in parentheses are. Look at data dictionary for info.
+
+Appears to be multiple entries for computer recorded in different ways. Search for char variable with "com" pattern present in string.
+
+```{r}
+# detect any character name containing "com" or "Com"
+com_variation <- str_detect(computer$char, "(com|Com)+")
+
+com_variation <- computer[com_variation,] %>% distinct(char) %>% .$char
+
+com_variation <- 
+  computer[str_detect(computer$char, "(com|Com)+"),] %>%
+  distinct(char) %>% 
+  .$char
+
+# create factor variable
+computer$char <- as_factor(computer$char)
+
+# collapse all factors containing "com|Com" into single factor "Computer"
+computer$char <- fct_collapse(.f = computer$char, Computer = com_variation)
+
+#check levels
+computer$char %>% levels
+
+# remove extra information in parentheses (e.g V.O. or O.S)
+## identify pattern of " (" 
+## remove this pattern and any characters that follow it
+
+computer$char <- 
+  computer$char %>% 
+  str_replace_all(pattern = "\\s+\\(+.+", replacement = "") %>% 
+  as_factor
+
+computer
+computer$char %>% levels
+```
+
+```{r visualise_char}
+computer %>%
+  mutate(char = fct_lump(computer$char, 10)) %>% 
+  ggplot(aes(y = fct_infreq(char)))+
+  geom_bar()
+
+```
