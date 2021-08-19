@@ -40,61 +40,165 @@ clean_df %>% write_csv("2021/2021-08-17/computer.csv")
 ```
 
 ```{r}
-glimpse(computer)
 skim(computer)
 ```
 
 ```{r explore_char}
-# too many characters
+# tabulate
 computer %>% 
   group_by(char) %>% 
   count %>% 
   arrange(desc(n))
-  
 
+computer$char %>% n_distinct()
+computer$char %>% unique
 ```
 
-Unsure what different abbreviations in parentheses are. Look at data dictionary for info.
+There are many characters but on inspection some appear to be duplicates e.g. due to different syntax or spelling. Use stringr to manipulate string data to tidy this up.
 
-Appears to be multiple entries for computer recorded in different ways. Search for char variable with "com" pattern present in string.
-
-```{r}
-# detect any character name containing "com" or "Com"
-com_variation <- str_detect(computer$char, "(com|Com)+")
-
-com_variation <- computer[com_variation,] %>% distinct(char) %>% .$char
-
+```{r tidy_char}
+## detect any character name containing "com" or "Com"
+## create object containing variations of computer
 com_variation <- 
   computer[str_detect(computer$char, "(com|Com)+"),] %>%
   distinct(char) %>% 
   .$char
 
-# create factor variable
+# turn computer$char into a factor 
 computer$char <- as_factor(computer$char)
 
-# collapse all factors containing "com|Com" into single factor "Computer"
-computer$char <- fct_collapse(.f = computer$char, Computer = com_variation)
-
-#check levels
-computer$char %>% levels
+# collapse all factor levels containing "com|Com" into single factor level of "Computer"
+computer$char <- 
+  fct_collapse(.f = computer$char, Computer = com_variation)
 
 # remove extra information in parentheses (e.g V.O. or O.S)
 ## identify pattern of " (" 
 ## remove this pattern and any characters that follow it
-
+## sort out a few factors where no pattern
 computer$char <- 
   computer$char %>% 
   str_replace_all(pattern = "\\s+\\(+.+", replacement = "") %>% 
-  as_factor
+  as_factor %>% 
+  fct_recode(Picard = "Jean-Luc",
+             Troi = "Mrs. Troi",
+             Riker = "Riker'S Voice")
 
-computer
+#check levels
 computer$char %>% levels
 ```
 
 ```{r visualise_char}
 computer %>%
+  # main characters only (top 10)
   mutate(char = fct_lump(computer$char, 10)) %>% 
   ggplot(aes(y = fct_infreq(char)))+
   geom_bar()
+```
 
+Indicates commonest characters in data set - maybe should split into people and computer. There is a variable {char_type} that can be used for this.
+
+Continue to tidy data set then do this at the end and re-visualise.
+
+```{r explore_type}
+computer$type %>% unique
+# duplicates with different cases used
+# switch all to title case and change to factor
+computer$type <- 
+  computer$type %>% 
+  str_to_title() %>% 
+  as_factor()
+
+computer %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(type))))+
+  coord_flip()
+```
+
+13 possible interactions. Divide into computer and individual comments
+
+```{r breakdown_types}
+computer %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(type))))+
+  coord_flip()+
+  facet_wrap(~ char_type)
+```
+
+Different types of interaction are used by 'person' and 'computer' except *conversation* which occurs in both groups.
+
+Explore pri-type
+
+```{r compare_pritype_type}
+computer$pri_type <- 
+  computer$pri_type %>% 
+  as_factor()
+
+# compare factor levels
+a <- sort(levels(computer$type))
+b <- sort(levels(computer$pri_type))
+identical(a,b)
+```
+
+No manipulation required to 'pri-type' variable
+
+```{r visualise_pri_type}
+computer %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(pri_type))))+
+  coord_flip()+
+  facet_wrap(~ char_type)
+```
+
+```{r explore_domain}
+# standardise syntax to avoid duplication
+computer$domain %>%  %>% unique
+
+computer$sub_domain %>% 
+  as_factor() %>% 
+  fct_recode(Holodeck = "Holodeck?") %>% 
+  levels
+```
+
+```{r tidy_domain_subdomain}
+computer$domain <- 
+  computer$domain %>% str_to_title() %>% 
+  as_factor()
+
+computer$sub_domain <- computer$sub_domain %>% 
+  as_factor() %>% 
+  fct_recode(Holodeck = "Holodeck?")
+```
+
+```{r}
+# explore how subdomains relate to domains
+
+computer %>% 
+  group_by(domain, sub_domain) %>% 
+  count
+
+# visualise
+computer %>% 
+  ggplot() +
+  geom_bar(aes(x = fct_infreq(sub_domain))) +
+  coord_flip()+
+  facet_wrap(~ domain)
+
+# individual plots may be clearer. will need a function and use map() 
+
+```
+
+```{r}
+# one final group should be factor {char_type}
+computer$char_type <- 
+  as_factor(computer$char_type)
+```
+
+Split data into 2 sets - computer and person
+
+```{r}
+person_type <- computer %>%
+  filter(char_type == "Person")
+
+comp_type <- computer %>% 
+  filter(char_type == "Computer") 
 ```
