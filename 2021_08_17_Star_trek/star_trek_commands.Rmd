@@ -202,3 +202,101 @@ person_type <- computer %>%
 comp_type <- computer %>% 
   filter(char_type == "Computer") 
 ```
+
+Missing Values
+
+```{r}
+skim(computer)
+# mainly present in domain / subdomain
+computer[is.na(computer$domain),] %>% view
+
+computer[is.na(computer$domain),]  %>% 
+  ggplot()+
+  geom_bar(aes(domain))+
+  facet_wrap(~ char_type)
+
+computer %>% 
+  filter(char_type == "Computer") %>% 
+  filter(!is.na(domain))
+```
+
+Person Data
+
+```{r}
+# collapse rows to include only ones where type = primary type
+# identify how many observations have NA as a value in domain variable
+person_pri_type <- 
+  person_type %>%  
+  filter(type == pri_type)
+
+person_pri_type %>% 
+  summarise("total" = nrow(person_type),
+            "no domain" = sum(is.na(domain)),
+            "no sub domain" = sum(is.na(sub_domain)),
+            "no domain or sub domain" = sum(is.na(domain) & is.na(sub_domain)))
+
+# 8 observations where no domain or subdomain
+## not "missing data' so change NAs 'Not Specified'
+
+person_pri_type$domain <- 
+  fct_expand(person_pri_type$domain, domain = "Unspecified") %>%
+    replace_na(list(domain = "Unspecified"))
+
+person_pri_type$sub_domain <- 
+  fct_expand(person_pri_type$sub_domain, sub_domain = "Unspecified") %>%
+    replace_na(list(sub_domain = "Unspecified"))
+```
+
+```{r visualise_domain}
+person_pri_type %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(domain))))+
+  coord_flip()
+
+```
+
+```{r visualise_entertainment}
+person_pri_type %>% 
+  filter(domain == "Entertainment") %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_infreq(sub_domain)))
+
+```
+
+```{r explore_domain_vs_char}
+# main characters
+main <- person_pri_type %>% 
+  group_by(char) %>% 
+  count %>% 
+  arrange(desc(n)) %>% head(5) %>% pull(char) %>% 
+  as.character()
+  
+person_pri_type %>% 
+  filter(char %in% main) %>% 
+  ggplot()+
+  geom_bar(aes(x = domain, fill = char), position = "fill")+
+  coord_flip()
+
+person_pri_type %>% 
+  filter(char %in% main) %>% 
+  ggplot()+
+  geom_bar(aes(x = domain), stat = "count")+
+  coord_flip()+
+  facet_wrap(~ char)
+
+# can I visualise facets as proportions rather than counts
+
+person_pri_type %>% 
+  filter(char %in% main) %>% 
+  group_by(char, domain) %>% 
+  tally %>% 
+  mutate(prop = n / sum(n)) %>% ungroup %>% 
+  group_by(domain) %>% 
+  mutate(domain_total = sum(n),
+         domain_prop = n / sum(n)) %>% 
+  ggplot()+
+  geom_col(aes(x = domain, y = prop))+
+
+  facet_wrap(~char, ncol = 1)
+
+```
