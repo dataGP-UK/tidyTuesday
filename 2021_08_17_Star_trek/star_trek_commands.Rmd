@@ -3,6 +3,14 @@ title: "Star Trek Voice Commands"
 output: html_notebook
 ---
 
+Article
+
+<http://www.speechinteraction.org/TNG/AUTHORS_TeaEarlGreyHot_CHI2021.pdf>
+
+Codebook
+
+<http://www.speechinteraction.org/TNG/TeaEarlGreyHotDatasetCodeBook.pdf>
+
 ```{r setup}
 library(tidyverse)
 library(skimr)
@@ -268,7 +276,7 @@ person_pri_type %>%
 main <- person_pri_type %>% 
   group_by(char) %>% 
   count %>% 
-  arrange(desc(n)) %>% head(5) %>% pull(char) %>% 
+  arrange(desc(n)) %>% head(6) %>% pull(char) %>% 
   as.character()
   
 person_pri_type %>% 
@@ -286,8 +294,46 @@ person_pri_type %>%
 
 # can I visualise facets as proportions rather than counts
 
-person_pri_type %>% 
+plot_data <- person_pri_type %>% 
   filter(char %in% main) %>% 
+  mutate(domain = fct_lump(domain, n = 4)) %>% 
+  group_by(char, domain) %>% 
+  tally %>% 
+  mutate(prop = n / sum(n)) %>% ungroup %>% 
+  group_by(domain) %>% 
+  mutate(domain_total = sum(n),
+         domain_prop = n / sum(n)) 
+
+entertainment <- plot_data %>% 
+  filter(domain == "Entertainment") %>% 
+  group_by(char) %>% 
+  arrange(desc(prop)) %>% 
+  pull(char) %>% 
+  as.character()
+
+
+faceted_plot <- plot_data %>% 
+  mutate(char = fct_relevel(char, entertainment)) %>% 
+  ggplot()+
+  geom_col(aes(x = fct_reorder(domain, domain_total), 
+               y = prop, 
+               fill = domain))+
+  coord_flip()+
+  scale_y_continuous(labels = NULL, breaks = NULL)+
+  theme_minimal()+
+  scale_fill_ordinal()+
+  facet_wrap(~ char)+
+  guides(fill = FALSE)
+
+
+
+
+
+```
+
+```{r}
+person_pri_type %>% 
+  filter(char %in% main & domain != "Unspecified") %>%
   group_by(char, domain) %>% 
   tally %>% 
   mutate(prop = n / sum(n)) %>% ungroup %>% 
@@ -295,8 +341,10 @@ person_pri_type %>%
   mutate(domain_total = sum(n),
          domain_prop = n / sum(n)) %>% 
   ggplot()+
-  geom_col(aes(x = domain, y = prop))+
-
-  facet_wrap(~char, ncol = 1)
-
+  geom_col(aes(x = char, 
+               y = prop, 
+               fill = fct_rev(
+                 fct_reorder(
+               fct_lump(domain, n = 1), prop))), 
+           position = "dodge")
 ```
