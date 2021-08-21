@@ -171,6 +171,7 @@ person %>%
 # explore use by individual characters
 
 ## create vector containing names of top 5 characters 
+## use this to filter {person} data-frame
 main <- person %>% 
   group_by(char) %>% 
   count %>% 
@@ -178,36 +179,43 @@ main <- person %>%
   head(5) %>% 
   pull(char)
 
-### filter person data-frame by main characters
 main <- person %>% 
   filter(char %in% main)
 
-## main plot showing characters and number VUI interactions
+# Main Plot ---------------------------------------------------------------
+
+# main plot showing characters and number VUI interactions
 main %>% 
-  mutate(char = fct_rev(fct_infreq(char))) %>% 
+  mutate(char = fct_rev(fct_infreq(char))) %>%
   ggplot()+
-  geom_bar(aes(x = char))+ 
-  coord_flip()
+  geom_bar(aes(y = char))
 
-## sub plot showing characters and domains: faceted plot
-main %>%
-  mutate(domain = fct_lump(domain, 4),
-         char = fct_infreq(char)) %>% 
-  filter(domain != "Other") %>% 
-  mutate(domain = fct_relevel(domain,
-                              c("Analysis", "InfoSeek",
-                                "Entertainment", "IoT"))) %>% 
+# simplify main plot
+main_plot <- main %>% 
+  mutate(char = fct_rev(fct_infreq(char))) %>%
   ggplot()+
-  geom_bar(aes(x = domain))+ 
-  coord_flip()+
-  facet_wrap(~ char, ncol = 1)
+  geom_bar(aes(y = char), fill = "light gray")+
+  labs(
+    #title = "Primary Interactions with VUI",
+       y = NULL, x = NULL)+
+  scale_y_discrete(breaks = NULL)+
+  scale_x_continuous(limits = c(0,250), breaks = seq(0, 150, 50))+
+  theme_cowplot()+
+  geom_text(aes(x = 180, 
+                y = char, 
+                label = char),
+            hjust = 0,
+            size = 8)
+main_plot
   
-
-# can I visualise facets as proportions rather than counts
+# visualised as facet plot with proportions rather than counts
 
 plot_data <- 
   main %>% 
   mutate(domain = fct_lump(domain, n = 4),
+         domain = fct_relevel(domain,
+                              c("Analysis", "InfoSeek",
+                                "Entertainment", "IoT")),
          char = fct_infreq(char)) %>% 
   filter(domain != "Other") %>% 
   group_by(char, domain) %>% 
@@ -217,25 +225,61 @@ plot_data <-
   mutate(domain_total = sum(n),
          domain_prop = n / sum(n)) 
 
-entertainment <- plot_data %>% 
-  filter(domain == "Entertainment") %>% 
-  group_by(char) %>% 
-  arrange(desc(prop)) %>% 
-  pull(char) %>% 
-  as.character()
-
-
-plot_data %>% 
+facet <- plot_data %>% 
   ggplot()+
   geom_col(aes(x = fct_reorder(domain, domain_total), 
                y = prop, 
                fill = domain))+
-  coord_flip()+
+  scale_x_discrete(labels = NULL, breaks = NULL)+
   scale_y_continuous(labels = NULL, breaks = NULL)+
   theme_minimal()+
   scale_fill_ordinal()+
-  labs(x = NULL, y = NULL)+
-  scale_x_discrete()+
-  facet_wrap(~ char, ncol = 1)
+  labs(
+    #title = "Broken down into domains",
+       x = NULL, y = NULL,
+       caption = "Data: Tidy Tuesday | Plot: dataGP-UK")+
+  facet_wrap(~ char, ncol = 1)+
+  theme(strip.background = element_blank(), 
+        strip.text.x = element_blank(),
+        legend.position = "none")
 
-faceted_plot
+facet
+# join plots together -----------------------------------------------------
+library(cowplot)
+
+ggdraw() +
+  draw_plot(main_plot, x = 0, y = 0, width = 0.5, height = .85) +
+  draw_plot(facet, x = 0.48, y = 0, width = 0.50, height = 0.8)+
+  draw_plot_label(
+    label = "Interactions between 'Star Trek TNG' Characters & VUI",  
+    size = 20,hjust=0,color="#343a40",
+    x = 0.04, y = 0.97)
+
+
+  draw_plot_label(
+    label = "from 1947 to 2017",  
+    size = 20,hjust=0,color="#343a40",
+    x = 0.04, y = 0.90)+
+  draw_text(
+    text = "Gross investment in 2012 dollars",  
+    size = 10,hjust=0,color="#343a40",
+    x = 0.04, y = 0.80)+
+  draw_text(
+    text = "Digital",  
+    size = 12,hjust=0,color="#9A031E",
+    x = 0.47, y = 0.85)+
+  draw_text(
+    text = "Social",  
+    size = 12,hjust=0,color="#E36414",
+    x = 0.47, y = 0.55)+
+  draw_text(
+    text = "Basic",  
+    size = 12, hjust=0,color="#0F4C5C",
+    x = 0.47, y = 0.25)+
+  draw_text(
+    text = "Data: Bureau of Economic Analysis",  
+    size = 8,hjust = 0, color = "#343a40", angle = 90,
+    x = 0.025, y = 0.08, vjust = 0)
+
+
+
