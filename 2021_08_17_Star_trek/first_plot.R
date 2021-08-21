@@ -194,18 +194,19 @@ main %>%
 main_plot <- main %>% 
   mutate(char = fct_rev(fct_infreq(char))) %>%
   ggplot()+
-  geom_bar(aes(y = char), fill = "light gray")+
+  geom_bar(aes(y = char, fill = char))+
   labs(
     #title = "Primary Interactions with VUI",
        y = NULL, x = NULL)+
   scale_y_discrete(breaks = NULL)+
   scale_x_continuous(limits = c(0,250), breaks = seq(0, 150, 50))+
-  theme_cowplot()+
-  geom_text(aes(x = 180, 
+  theme_minimal_vgrid()+
+  geom_text(aes(x = 190, 
                 y = char, 
                 label = char),
             hjust = 0,
-            size = 8)
+            size = 6)+
+  theme(legend.position = "none")
 main_plot
   
 # visualised as facet plot with proportions rather than counts
@@ -232,7 +233,7 @@ facet <- plot_data %>%
                fill = domain))+
   scale_x_discrete(labels = NULL, breaks = NULL)+
   scale_y_continuous(labels = NULL, breaks = NULL)+
-  theme_minimal()+
+  theme_minimal_grid()+
   scale_fill_ordinal()+
   labs(
     #title = "Broken down into domains",
@@ -241,7 +242,8 @@ facet <- plot_data %>%
   facet_wrap(~ char, ncol = 1)+
   theme(strip.background = element_blank(), 
         strip.text.x = element_blank(),
-        legend.position = "none")
+        legend.position = "top",
+        legend.title = element_blank())
 
 facet
 # join plots together -----------------------------------------------------
@@ -249,37 +251,10 @@ library(cowplot)
 
 ggdraw() +
   draw_plot(main_plot, x = 0, y = 0, width = 0.5, height = .85) +
-  draw_plot(facet, x = 0.48, y = 0, width = 0.50, height = 0.8)+
+  draw_plot(facet, x = 0.45, y = 0.02, width = 0.5, height = 0.87)+
   draw_plot_label(
-    label = "Interactions between 'Star Trek TNG' Characters & VUI",  
-    size = 20,hjust=0,color="#343a40",
-    x = 0.04, y = 0.97)
-
-
-  draw_plot_label(
-    label = "from 1947 to 2017",  
-    size = 20,hjust=0,color="#343a40",
-    x = 0.04, y = 0.90)+
-  draw_text(
-    text = "Gross investment in 2012 dollars",  
-    size = 10,hjust=0,color="#343a40",
-    x = 0.04, y = 0.80)+
-  draw_text(
-    text = "Digital",  
-    size = 12,hjust=0,color="#9A031E",
-    x = 0.47, y = 0.85)+
-  draw_text(
-    text = "Social",  
-    size = 12,hjust=0,color="#E36414",
-    x = 0.47, y = 0.55)+
-  draw_text(
-    text = "Basic",  
-    size = 12, hjust=0,color="#0F4C5C",
-    x = 0.47, y = 0.25)+
-  draw_text(
-    text = "Data: Bureau of Economic Analysis",  
-    size = 8,hjust = 0, color = "#343a40", angle = 90,
-    x = 0.025, y = 0.08, vjust = 0)
-
+    label = "Primary Interactions Between 'Star Trek TNG' Characters & VUI",  
+    size = 18, hjust = 0.5,color="#343a40",
+    x = 0.5, y = 1)
 
 
