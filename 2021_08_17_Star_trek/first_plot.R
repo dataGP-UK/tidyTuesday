@@ -194,19 +194,21 @@ main %>%
 main_plot <- main %>% 
   mutate(char = fct_rev(fct_infreq(char))) %>%
   ggplot()+
-  geom_bar(aes(y = char, fill = char))+
+  geom_bar(aes(y = char, fill = char), colour = "dark grey")+
   labs(
     #title = "Primary Interactions with VUI",
        y = NULL, x = NULL)+
   scale_y_discrete(breaks = NULL)+
   scale_x_continuous(limits = c(0,250), breaks = seq(0, 150, 50))+
   theme_minimal_vgrid()+
-  geom_text(aes(x = 190, 
+  geom_text(aes(x = 185, 
                 y = char, 
                 label = char),
             hjust = 0,
-            size = 6)+
+            size = 5,
+            family = "mono")+
   theme(legend.position = "none")
+
 main_plot
   
 # visualised as facet plot with proportions rather than counts
@@ -215,8 +217,8 @@ plot_data <-
   main %>% 
   mutate(domain = fct_lump(domain, n = 4),
          domain = fct_relevel(domain,
-                              c("Analysis", "InfoSeek",
-                                "Entertainment", "IoT")),
+                              c("Entertainment", "IoT", 
+                                "Analysis", "InfoSeek")),
          char = fct_infreq(char)) %>% 
   filter(domain != "Other") %>% 
   group_by(char, domain) %>% 
@@ -228,12 +230,12 @@ plot_data <-
 
 facet <- plot_data %>% 
   ggplot()+
-  geom_col(aes(x = fct_reorder(domain, domain_total), 
+  geom_col(aes(x = domain, 
                y = prop, 
                fill = domain))+
   scale_x_discrete(labels = NULL, breaks = NULL)+
   scale_y_continuous(labels = NULL, breaks = NULL)+
-  theme_minimal_grid()+
+  theme_light()+
   scale_fill_ordinal()+
   labs(
     #title = "Broken down into domains",
@@ -243,7 +245,8 @@ facet <- plot_data %>%
   theme(strip.background = element_blank(), 
         strip.text.x = element_blank(),
         legend.position = "top",
-        legend.title = element_blank())
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12, family = "mono"))
 
 facet
 # join plots together -----------------------------------------------------
@@ -251,10 +254,13 @@ library(cowplot)
 
 ggdraw() +
   draw_plot(main_plot, x = 0, y = 0, width = 0.5, height = .85) +
-  draw_plot(facet, x = 0.45, y = 0.02, width = 0.5, height = 0.87)+
+  draw_plot(facet, x = 0.45, y = 0.04, width = 0.5, height = 0.89)+
   draw_plot_label(
     label = "Primary Interactions Between 'Star Trek TNG' Characters & VUI",  
     size = 18, hjust = 0.5,color="#343a40",
-    x = 0.5, y = 1)
+    x = 0.5, y = 1, family = "mono")
 
 
+# save image --------------------------------------------------------------
+
+ggsave("2021_08_17_Star_trek/character_domains.png", width = 10, height = 6)
