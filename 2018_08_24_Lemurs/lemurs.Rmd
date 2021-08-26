@@ -25,14 +25,17 @@ lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
 
 ## Tidying and Transformation
 
-Join both datasets so can use common names rather than 'taxon' codes
+### Join datasets
+
+Join both datasets so can use common names rather than 'taxon' codes. First attempt resulted in missing values so explored any differences between the two sets of data and re_joined
 
 ```{r}
 # need to explore taxonomy dataset and look for error ?taxon codes that don't match
 anti_join(lemurs, taxonomy) %>% 
   distinct(taxon) %>% .$taxon
 
-# CMED in one set CMEAD in the other --> NA when left join
+# taxon = "CMED" in one set "CMEAD" in the other --> NA when left join
+# recode so these match
 taxonomy$taxon <- 
   taxonomy$taxon %>% 
   fct_recode(CMED = "CMEAD")
@@ -43,37 +46,34 @@ lemurs <- lemurs %>%
   select(common_name, everything())
 ```
 
-Group_together data for each individual lemur and exclude hybrids.
+### Single row for each individual lemur
 
-There are 2 different hybrid species both coded as 'hybrid' so they are joined together when grouping by 'common' name.
+Group_together data for each individual lemur so each lemur is represented by a single row. Multiple rows exist due to weight data for different ages. Can use original dataset to look at weight data and this new data_frame to look at individual lemurs.
+
+There are 2 different hybrid species both coded as 'hybrid' so they are joined together when grouping by 'common' name. This distorts the data so I chose to exclude hybrid species from my analysis.
 
 ```{r}
-lemurs_species <- distinct(lemurs, dlc_id, .keep_all = TRUE) %>% 
+lemurs_distinct <- distinct(lemurs, dlc_id, .keep_all = TRUE) %>% 
   filter(common_name != "hybrid")
 ```
 
-There are multiple species which will make comparisons difficult when visualising. Create new object - a data-frame containing data for the 6 commonest species.
+### Choose top species
 
-Visualise distribution
+There are 27 different species which will make comparisons difficult when visualising.
 
-```{r}
-lemurs_species %>% 
-  ggplot(aes(x = fct_infreq(common_name)))+
-  geom_bar()+
-  coord_flip()
-```
-
-Choose top pure species
+Create new object - a data-frame containing data for the *n* commonest species.
 
 ```{r}
-top_species <- lemurs_species %>%  
+n <- 10
+
+top_species <- lemurs_distinct %>%  
   group_by(common_name) %>% 
   count() %>% 
   arrange(desc(n)) %>% 
-  head(6) %>% 
+  head(n) %>% 
   pull(common_name)
 
-top_species<- lemurs_species %>% 
+top_species<- lemurs_distinct %>% 
   filter(common_name %in% top_species) 
 ```
 
@@ -96,14 +96,18 @@ descriptive
 
 ## Visualisation
 
-#### Distribution of species
+### Distribution of species
+
+#### Overall
 
 ```{r}
-lemurs_species %>% 
+lemurs_distinct %>% 
   ggplot(aes(x = fct_infreq(common_name)))+
   geom_bar()+
   coord_flip()
 ```
+
+#### Top n species
 
 ```{r}
 top_species %>% 
@@ -117,7 +121,7 @@ top_species %>%
 Explore distribution of months of birth.
 
 ```{r}
-lemurs %>% 
+lemurs_distinct %>% 
   mutate(birth_month = as.integer(birth_month)) %>% 
   ggplot()+
   geom_density(aes(x = birth_month))+
@@ -127,7 +131,7 @@ lemurs %>%
 Birth month is a discrete variable so convert numbers to month abbreviation and re-plot as a bar chart. Will need to produce an ordered factor for birth month and exclude NA. Also filter for captive born only and exclude any estimated dob.
 
 ```{r}
-lemurs %>% 
+lemurs_distinct %>% 
   drop_na(birth_month) %>% 
   filter(birth_type == "CB" & is.na(estimated_dob)) %>% 
   mutate(birth_month = month.abb[birth_month],
@@ -143,7 +147,7 @@ lemurs %>%
 Filter for those with known dob and known dod
 
 ```{r}
-lemurs %>% 
+top_species %>% 
   filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
          & is.na(estimated_dob)) %>% 
   ggplot(aes(x = age_at_death_y))+
@@ -154,10 +158,37 @@ lemurs %>%
 Multi-modal distribution - is this due to different mortality rates at different ages or is there a difference between species? Can look at data for top 6 species and compare rates.
 
 ```{r}
-top_five %>% 
+top_species %>% 
   filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
          & is.na(estimated_dob)) %>% 
   filter(!is.na(common_name) & common_name != "hybrid") %>% 
   ggplot(aes(x = age_at_death_y))+
-  geom_histogram(aes(fill = common_name), binwidth = 1)
+  geom_density(aes(fill = common_name))+
+  facet_wrap(~ common_name)
+```
+
+Produce a table of descriptive statistics for species of lemur
+
+```{r}
+top_species %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
+         & is.na(estimated_dob)) %>%
+  group_by(common_name) %>% 
+  summarise(mean_life_expectancy = mean (age_at_death_y, na.rm = TRUE)) %>% 
+  mutate (common_name = fct_reorder(common_name, mean_life_expectancy)) %>% 
+  ggplot()+
+  geom_col(aes(x = common_name, y = mean_life_expectancy))+
+  coord_flip()
+```
+
+```{r}
+top_species %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
+         & is.na(estimated_dob)) %>%
+  ggplot()+
+  geom_boxplot(aes(fill = common_name, 
+                   y = age_at_death_y,
+                   x = fct_reorder(common_name, age_at_death_y)))+
+  coord_flip()+
+  theme(legend.position = "none")
 ```
