@@ -1,0 +1,119 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Set Up
+
+```{r set_up}
+library(tidyverse)
+library(skimr)
+library(lubridate)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2021, week = 35)
+```
+
+```{r}
+lemurs <- tuesdata$lemur_data
+taxonomy <- tuesdata$taxonomy
+lemurs <- lemurs %>% 
+  left_join(taxonomy) %>% 
+  select(common_name, everything())
+```
+
+```{r}
+glimpse(lemurs)
+skim(lemurs)
+```
+
+Group_together data for each individual lemur
+
+```{r}
+lemurs <- distinct(lemurs, dlc_id, .keep_all = TRUE)
+```
+
+There are multiple species which will make comparisons difficult when visualising. Create new object - a data-frame containing data for the 6 commonest species
+
+```{r}
+top_five <- lemurs %>% 
+  group_by(taxon) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  head(5) %>% 
+  pull(taxon)
+
+top_five <- lemurs %>% 
+  filter(taxon %in% top_five) 
+```
+
+Visualisation
+
+```{r}
+lemurs %>% 
+  ggplot(aes(x = fct_infreq(common_name)))+
+  geom_bar()+
+  coord_flip()
+```
+
+Descriptive stats for numeric variables
+
+```{r}
+descriptive <- lemurs %>% 
+  select(c(birth_month, age_at_death_y, litter_size, n_known_offspring)) %>%
+  psych::describe() %>% 
+  select(-(c(vars)))
+
+descriptive
+```
+
+Birth Month
+
+Explore distribution of months of birth.
+
+```{r}
+lemurs %>% 
+  mutate(birth_month = as.integer(birth_month)) %>% 
+  ggplot()+
+  geom_density(aes(x = birth_month))+
+  scale_x_continuous(breaks = c(1:12), labels = c(1:12))
+```
+
+Birth month is a discrete variable so convert numbers to month abbreviation and re-plot as a bar chart. Will need to produce an ordered factor for birth month and exclude NA. Also filter for captive born only and exclude any estimated dob.
+
+```{r}
+lemurs %>% 
+  drop_na(birth_month) %>% 
+  filter(birth_type == "CB" & is.na(estimated_dob)) %>% 
+  mutate(birth_month = month.abb[birth_month],
+         birth_month = factor(birth_month, 
+                              levels = month.abb, 
+                              ordered = TRUE)) %>% 
+  ggplot(aes(x = birth_month))+
+  geom_bar()
+```
+
+Age at death
+
+Filter for those with known dob and known dod
+
+```{r}
+lemurs %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
+         & is.na(estimated_dob)) %>% 
+  ggplot(aes(x = age_at_death_y))+
+  geom_histogram(binwidth = 1, colour = "white", fill = "brown")+
+  geom_vline(xintercept = 12.05)
+```
+
+Multi-modal distribution - is this due to different mortality rates at different ages or is there a difference between species? Can look at data for top 6 species and compare rates.
+
+```{r}
+top_five %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
+         & is.na(estimated_dob)) %>% 
+  filter(!is.na(common_name) & common_name != "hybrid") %>% 
+  ggplot(aes(x = age_at_death_y))+
+  geom_histogram(aes(fill = common_name), binwidth = 1)
+```
