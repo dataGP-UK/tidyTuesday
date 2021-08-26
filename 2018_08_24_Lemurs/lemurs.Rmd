@@ -28,21 +28,33 @@ lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
 Join both datasets so can use common names rather than 'taxon' codes
 
 ```{r}
+# need to explore taxonomy dataset and look for error ?taxon codes that don't match
+anti_join(lemurs, taxonomy) %>% 
+  distinct(taxon) %>% .$taxon
+
+# CMED in one set CMEAD in the other --> NA when left join
+taxonomy$taxon <- 
+  taxonomy$taxon %>% 
+  fct_recode(CMED = "CMEAD")
+
 # join both datasets so can use common names rather than 'taxon' codes
 lemurs <- lemurs %>% 
   left_join(taxonomy) %>% 
   select(common_name, everything())
 ```
 
-Group_together data for each individual lemur
+Group_together data for each individual lemur and exclude hybrids.
+
+There are 2 different hybrid species both coded as 'hybrid' so they are joined together when grouping by 'common' name.
 
 ```{r}
-lemurs_species <- distinct(lemurs, dlc_id, .keep_all = TRUE)
+lemurs_species <- distinct(lemurs, dlc_id, .keep_all = TRUE) %>% 
+  filter(common_name != "hybrid")
 ```
 
 There are multiple species which will make comparisons difficult when visualising. Create new object - a data-frame containing data for the 6 commonest species.
 
-Visualise distribution first
+Visualise distribution
 
 ```{r}
 lemurs_species %>% 
@@ -51,60 +63,18 @@ lemurs_species %>%
   coord_flip()
 ```
 
-NA and hybrid are common 'species'
-
-Explore why NA and what is 'hybrid'
-
-How many species in data set vs species in taxonomy set
+Choose top pure species
 
 ```{r}
-# count number of different taxon codes in each data frame
-lemurs_species %>% 
-  distinct(taxon) %>% nrow()
-taxonomy %>% 
-  distinct(taxon) %>% nrow()
-
-# check if NAs in both sets or just the one
-sum(is.na(lemurs_species$common_name))
-sum(is.na(taxonomy$common_name))
-
-# need to explore taxonomy dataset and look for error ?taxon codes that don't match
-anti_join(lemurs_species, taxonomy) %>% 
-  distinct(taxon) %>% .$taxon
-```
-
-*taxonomy* set refers to: 'CMEAD' - Cheirogaleus medius - "Fat-tailed dwarf lemur"
-
-However *lemurs* data-set uses *taxon* code 'CMED'
-
-Need to recode this so that they match and then re_join the data-frames.
-
-```{r}
-taxonomy$taxon <- 
-  taxonomy$taxon %>% 
-  fct_recode(CMED = "CMEAD")
-
-lemurs <- lemurs %>% 
-  left_join(taxonomy) %>% 
-  select(common_name, everything())
-```
-
-Explore 'hybrid'
-
-```{r}
-
-```
-
-```{r}
-top_five <- lemurs %>% 
-  group_by(taxon) %>% 
+top_species <- lemurs_species %>%  
+  group_by(common_name) %>% 
   count() %>% 
   arrange(desc(n)) %>% 
-  head(5) %>% 
-  pull(taxon)
+  head(6) %>% 
+  pull(common_name)
 
-top_five <- lemurs %>% 
-  filter(taxon %in% top_five) 
+top_species<- lemurs_species %>% 
+  filter(common_name %in% top_species) 
 ```
 
 ## Exploration
@@ -129,8 +99,15 @@ descriptive
 #### Distribution of species
 
 ```{r}
-lemurs %>% 
+lemurs_species %>% 
   ggplot(aes(x = fct_infreq(common_name)))+
+  geom_bar()+
+  coord_flip()
+```
+
+```{r}
+top_species %>% 
+  ggplot(aes(x = fct_rev(fct_infreq(common_name))))+
   geom_bar()+
   coord_flip()
 ```
