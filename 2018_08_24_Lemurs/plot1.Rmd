@@ -11,6 +11,7 @@ library(skimr)
 library(patchwork)
 library(cowplot)
 library(ggridges)
+library(here)
 ```
 
 ## Import
@@ -82,62 +83,7 @@ top_species<- lemurs_distinct %>%
 rm(n)
 ```
 
-## Exploration
-
-### Descriptive statistics
-
-```{r}
-skim(lemurs)
-```
-
-```{r}
-descriptive <- lemurs %>% 
-  select(c(birth_month, age_at_death_y, litter_size, n_known_offspring)) %>%
-  psych::describe() %>% 
-  select(-(c(vars)))
-
-descriptive
-```
-
 ## Visualisation
-
-### Distribution of species
-
-#### Overall
-
-```{r}
-lemurs_distinct %>% 
-  ggplot(aes(x = fct_infreq(common_name)))+
-  geom_bar()+
-  coord_flip()
-```
-
-#### Top n species
-
-```{r}
-top_species %>% 
-  ggplot(aes(x = fct_rev(fct_infreq(common_name))))+
-  geom_bar()+
-  coord_flip()
-```
-
-#### Birth Month
-
-Explore distribution of months of birth.
-
-Birth month is a discrete variable so convert numbers (integers) to month abbreviation and plot as a bar chart. Will need to produce an ordered factor for birth month and exclude missing values. Also exclude any estimated dob.
-
-```{r}
-lemurs_distinct %>% 
-  drop_na(birth_month) %>% 
-  filter(is.na(estimated_dob)) %>% 
-  mutate(birth_month = month.abb[birth_month],
-         birth_month = factor(birth_month, 
-                              levels = month.abb, 
-                              ordered = TRUE)) %>% 
-  ggplot(aes(x = birth_month))+
-  geom_bar()
-```
 
 #### Age at death
 
@@ -148,56 +94,10 @@ life_exp <- top_species %>%
   filter(!is.na(dob) & !is.na(dod) & is.na(estimated_dob)) 
 ```
 
-```{r}
-
-life_exp %>% 
-  ggplot(aes(x = age_at_death_y))+
-  geom_histogram(binwidth = 1, colour = "white", fill = "brown")+
-  geom_vline(xintercept = mean(life_exp$age_at_death_y, na.rm = TRUE))
-```
-
-Multi-modal distribution - is this due to different mortality rates at different ages or is there a difference between species?
-
-```{r}
-life_exp %>% 
-  ggplot(aes(x = age_at_death_y))+
-  geom_density(aes(fill = common_name))+
-  facet_wrap(~ common_name, ncol = 1)
-```
-
-Produce a plot of descriptive statistics for each of commonest species of lemur
-
-```{r}
-life_exp %>% 
-  group_by(common_name) %>% 
-  summarise(mean_life_expectancy = mean (age_at_death_y, na.rm = TRUE)) %>% 
-  mutate (common_name = fct_reorder(common_name, mean_life_expectancy)) %>% 
-  ggplot()+
-  geom_col(aes(x = common_name, y = mean_life_expectancy))+
-  coord_flip()
-```
-
-```{r}
-life_exp %>%
-  mutate(common_name = fct_reorder(common_name, age_at_death_y)) %>% 
-  ggplot()+
-  geom_boxplot(aes(fill = common_name, x = common_name, y = age_at_death_y))
-```
-
-## Final Plots
-
-Add colour
-
-Tidy up labels etc.
-
-Group together using patchwork package
-
-Annotate as needed
-
 ### Generic settings
 
 ```{r}
-lemur_pal <- c("#ccb79d", "#6e5337", "#687277", "#949992", "#c69d60")
+lemur_pal <- c("#595a55", "#6e5337", "#948255", "#46413d", "#e2dcc4")
 
 mean_age <- mean(life_exp$age_at_death_y) %>% round(2)
 
@@ -213,23 +113,20 @@ hist1 <- life_exp %>%
   ggplot(aes(x = age_at_death_y))+
   geom_histogram(binwidth = 1, 
                  colour = "black", 
-                 fill = "#ccb79d")+
-  labs(x = NULL, y = NULL)+
-  theme_minimal_grid()
+                 fill = "gray")+
+  labs(x = "Age at death (yrs)", y = NULL)+
+  theme_minimal_vgrid()
   
-hist1
-
-  
-geom_segment(aes(x = mean_age,
+hist1 <- hist1 + 
+  geom_segment(aes(x = mean_age,
                  xend = mean_age,
                  y = 0,
                  yend = 75),
              linetype = "dashed")+
-  
-labs(title = "Life expectancy has a multimodal distribution",
-     subtitle = "More lemurs die in first year of life than at any other age")+
-scale_x_continuous(name = "Age at death (yrs)")+
-  
+  annotate("text", x = mean_age + 0.5, y = 50, hjust = 0,
+           label =  paste0("Mean life \nexpectancy\n (", mean_age, " yrs)"))
+
+hist1
 ```
 
 ```{r barchart}
@@ -246,24 +143,23 @@ bar1 <- life_exp %>%
                        labels = NULL)+
   theme_minimal_grid()+
   theme(legend.position = "none")
-
-bar1
 ```
 
-```{r boxplot}
+```{r}
 box1 <- life_exp %>%
+  mutate(common_name = 
+           fct_relabel(life_exp$common_name,
+                       ~ str_replace(.x,"lemur", ""))) %>% 
   ggplot()+
   geom_boxplot(aes(x = common_name, y = age_at_death_y,
                    fill = common_name))+ 
   coord_flip()+
-  scale_fill_manual(values = lemur_pal)+
+  scale_fill_manual("Type of lemur", values = lemur_pal)+
   labs(x = NULL, y = NULL)+
-  scale_x_discrete(breaks = NULL,
-                       labels = NULL)+
+  scale_x_discrete(breaks = NULL, labels = NULL)+
   theme_minimal_grid()+
-  theme(legend.position = "none")
-
-box1
+  theme(legend.position = "right")+
+  guides(fill = guide_legend(reverse = TRUE))
 ```
 
 ```{r ridge_plot}
@@ -282,15 +178,21 @@ ridge1 <- life_exp %>%
                        labels = NULL)+
   theme_minimal_vgrid()+
   theme(legend.position = "none")
-  
-
-ridge1
-  
 ```
 
+### Grouped plot using patchwork
+
 ```{r grouping}
+grouped_plot <- hist1 / (box1 + ridge1) + plot_annotation(
+  title = "More lemurs  die in first year of life than at any other age\n(Top 5 captive species at Duke Lemur Centre)",
+  subtitle = "Appears to be mainly due to deaths of Coquerel's Sifakas",
+  caption = "Data: Tidy Tuesday | Plot: dataGP_UK")
 
-a / (c + d)
-  
+grouped_plot
+```
 
+### Save image
+
+```{r}
+ggsave(filename = "2018_08_24_Lemurs/plot1.png", width = 10, height = 6)
 ```
