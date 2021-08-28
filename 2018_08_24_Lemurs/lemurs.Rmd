@@ -8,6 +8,9 @@ output: html_notebook
 ```{r set_up}
 library(tidyverse)
 library(skimr)
+library(patchwork)
+library(cowplot)
+library(ggridges)
 ```
 
 ## Import
@@ -27,7 +30,7 @@ lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tid
 
 ### Join datasets
 
-Join both datasets so can use common names rather than 'taxon' codes. First attempt resulted in missing values so explored any differences between the two sets of data and re_joined
+Join both datasets so can use 'common names' rather than 'taxon' codes. First attempt resulted in missing values so I explored and corrected the differences between the two sets of data and re_joined them.
 
 ```{r}
 # need to explore taxonomy dataset and look for error ?taxon codes that don't match
@@ -48,7 +51,7 @@ lemurs <- lemurs %>%
 
 ### Single row for each individual lemur
 
-Group_together data for each individual lemur so each lemur is represented by a single row. Multiple rows exist due to weight data for different ages. Can use original dataset to look at weight data and this new data_frame to look at individual lemurs.
+Grouped together data for each individual lemur so each lemur is represented by a single row. Multiple rows exist due to weight data for different ages. Can use original dataset to look at weight data and this new data_frame to look at individual lemurs.
 
 There are 2 different hybrid species both coded as 'hybrid' so they are joined together when grouping by 'common' name. This distorts the data so I chose to exclude hybrid species from my analysis.
 
@@ -64,7 +67,7 @@ There are 27 different species which will make comparisons difficult when visual
 Create new object - a data-frame containing data for the *n* commonest species.
 
 ```{r}
-n <- 10
+n <- 5
 
 top_species <- lemurs_distinct %>%  
   group_by(common_name) %>% 
@@ -120,20 +123,12 @@ top_species %>%
 
 Explore distribution of months of birth.
 
-```{r}
-lemurs_distinct %>% 
-  mutate(birth_month = as.integer(birth_month)) %>% 
-  ggplot()+
-  geom_density(aes(x = birth_month))+
-  scale_x_continuous(breaks = c(1:12), labels = c(1:12))
-```
-
-Birth month is a discrete variable so convert numbers to month abbreviation and re-plot as a bar chart. Will need to produce an ordered factor for birth month and exclude NA. Also filter for captive born only and exclude any estimated dob.
+Birth month is a discrete variable so convert numbers (integers) to month abbreviation and plot as a bar chart. Will need to produce an ordered factor for birth month and exclude missing values. Also exclude any estimated dob.
 
 ```{r}
 lemurs_distinct %>% 
   drop_na(birth_month) %>% 
-  filter(birth_type == "CB" & is.na(estimated_dob)) %>% 
+  filter(is.na(estimated_dob)) %>% 
   mutate(birth_month = month.abb[birth_month],
          birth_month = factor(birth_month, 
                               levels = month.abb, 
@@ -144,33 +139,33 @@ lemurs_distinct %>%
 
 #### Age at death
 
-Filter for those with known dob and known dod
+Filter for those with known dob and known dod. This is to ensure accurate data. These are all captive born so data only represents captive born lemurs
 
 ```{r}
-top_species %>% 
-  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
-         & is.na(estimated_dob)) %>% 
+life_exp <- top_species %>% 
+  filter(!is.na(dob) & !is.na(dod) & is.na(estimated_dob)) 
+
+life_exp[life_exp$birth_type != "CB",]
+
+life_exp %>% 
   ggplot(aes(x = age_at_death_y))+
   geom_histogram(binwidth = 1, colour = "white", fill = "brown")+
-  geom_vline(xintercept = 12.05)
+  geom_vline(xintercept = mean(life_exp$age_at_death_y, na.rm = TRUE))
 ```
 
-Multi-modal distribution - is this due to different mortality rates at different ages or is there a difference between species? Can look at data for top 6 species and compare rates.
+Multi-modal distribution - is this due to different mortality rates at different ages or is there a difference between species?
 
 ```{r}
-top_species %>% 
-  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
-         & is.na(estimated_dob)) %>% 
-  filter(!is.na(common_name) & common_name != "hybrid") %>% 
+life_exp %>% 
   ggplot(aes(x = age_at_death_y))+
   geom_density(aes(fill = common_name))+
-  facet_wrap(~ common_name)
+  facet_wrap(~ common_name, ncol = 1)
 ```
 
-Produce a table of descriptive statistics for species of lemur
+Produce a plot of descriptive statistics for each of commonest species of lemur
 
 ```{r}
-top_species %>% 
+life_exp %>% 
   filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
          & is.na(estimated_dob)) %>%
   group_by(common_name) %>% 
@@ -182,13 +177,107 @@ top_species %>%
 ```
 
 ```{r}
-top_species %>% 
-  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" 
-         & is.na(estimated_dob)) %>%
+life_exp %>%
+  mutate(common_name = fct_reorder(common_name, age_at_death_y)) %>% 
   ggplot()+
-  geom_boxplot(aes(fill = common_name, 
-                   y = age_at_death_y,
-                   x = fct_reorder(common_name, age_at_death_y)))+
+  geom_boxplot(aes(fill = common_name, x = common_name, y = age_at_death_y))
+```
+
+## Final Plots
+
+Add colour
+
+Tidy up labels etc.
+
+Group together using patchwork package
+
+Annotate as needed
+
+### Generic settings
+
+```{r}
+lemur_pal <- c("#ccb79d", "#6e5337", "#687277", "#949992", "#c69d60")
+
+mean_age <- mean(life_exp$age_at_death_y) %>% round(2)
+
+life_exp <- life_exp %>%
+  mutate(common_name = fct_reorder(common_name, age_at_death_y))
+```
+
+### Individual plots
+
+```{r histogram_overall}
+a
+
+a <- life_exp %>% 
+  ggplot(aes(x = age_at_death_y))+
+  geom_histogram(binwidth = 1, 
+                 colour = "black", 
+                 fill = "#ccb79d")+
+  labs(x = NULL, y = NULL)+
+  theme_minimal_grid()
+  
+a
+  
+geom_segment(aes(x = mean_age,
+                 xend = mean_age,
+                 y = 0,
+                 yend = 75),
+             linetype = "dashed")+
+  
+labs(title = "Life expectancy has a multimodal distribution",
+     subtitle = "More lemurs die in first year of life than at any other age")+
+scale_x_continuous(name = "Age at death (yrs)")+
+  
+```
+
+```{r barchart}
+b <- life_exp %>%
+  group_by(common_name) %>% 
+  summarise(mean_life_expectancy = mean(age_at_death_y, na.rm = TRUE)) %>% 
+  ggplot()+
+  geom_col(aes(x = common_name, y = mean_life_expectancy, fill = common_name), 
+           colour = "black")+
   coord_flip()+
+  scale_fill_manual(values = lemur_pal)+
+  labs(x = NULL, y = NULL)+
+  theme_minimal_grid()+
   theme(legend.position = "none")
+
+b
+```
+
+```{r boxplot}
+c <- life_exp %>%
+  ggplot()+
+  geom_boxplot(aes(x = common_name, y = age_at_death_y,
+                   fill = common_name))+ 
+  coord_flip()+
+  scale_fill_manual(values = lemur_pal)+
+  labs(x = NULL, y = NULL)+
+  theme_minimal_grid()+
+  theme(legend.position = "none")
+
+c
+```
+
+```{r ridge_plot}
+
+d <- life_exp %>% 
+    ggplot()+
+    geom_density_ridges(aes(x = age_at_death_y, 
+                            y = common_name,
+                            height = ..density..,
+                            fill = common_name,
+                            scale = 0.95),
+                        stat = "density") +
+  scale_fill_manual(values = lemur_pal)+
+  scale_y_discrete(breaks = NULL,
+                       labels = NULL)+
+  labs(y = NULL)+
+  theme_minimal_vgrid()+
+  theme(legend.position = "none")
+
+d
+
 ```
