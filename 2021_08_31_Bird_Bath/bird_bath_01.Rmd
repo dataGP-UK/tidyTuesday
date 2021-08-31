@@ -1,0 +1,196 @@
+---
+title: "Bird Baths"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+```{r read_original_data}
+# final import
+raw_df <- readxl::read_xlsx(path = "2021_08_31_Bird_Bath/bird_bath_raw.xlsx")
+```
+
+```{r tidying}
+bird_df <- raw_df %>% 
+  pivot_longer(cols = 4:last_col(),
+               names_to = "bird_type", 
+               values_to = "bird_count") %>% 
+  janitor::clean_names()
+```
+
+```{r new_df}
+birds_seen <- bird_df %>% 
+   filter(bird_count > 0)
+```
+
+```{r}
+glimpse(birds_seen)
+skimr::skim(birds_seen)
+```
+
+```{r}
+bird_totals <- birds_seen %>% 
+  filter(is.na(survey_year)) %>% 
+  select(c(bird_type, bird_count))
+
+bird_totals %>% 
+  arrange(desc(bird_count))
+
+birds_seen <- birds_seen %>% 
+  filter(!is.na(survey_year))
+
+skimr::skim(birds_seen)
+```
+
+```{r}
+birds_seen %>% 
+  group_by(survey_year) %>% 
+  count() %>% 
+  arrange(desc(n))
+
+birds_seen %>% 
+  group_by(bioregions) %>% 
+  count() %>% 
+  arrange(desc(n))
+
+birds_seen %>% 
+  group_by(urban_rural) %>% 
+  count() %>% 
+  arrange(desc(n))
+
+birds_seen %>% 
+  group_by(bird_type) %>% 
+  count() %>% 
+  arrange(desc(n))
+```
+
+```{r}
+birds_seen %>% 
+  mutate(bioregions = fct_rev(fct_infreq(bioregions))) %>% 
+  ggplot(aes(x = bioregions))+
+  geom_bar()+
+  coord_flip()
+```
+
+```{r}
+birds_seen %>% 
+  filter(urban_rural == "Urban") %>% 
+  mutate(bioregions = fct_rev(fct_infreq(bioregions))) %>% 
+  ggplot(aes(x = bioregions))+
+  geom_bar()+
+  coord_flip()
+
+birds_seen %>% 
+  filter(urban_rural == "Rural") %>% 
+  mutate(bioregions = fct_rev(fct_infreq(bioregions))) %>% 
+  ggplot(aes(x = bioregions))+
+  geom_bar()+
+  coord_flip()
+
+```
+
+```{r}
+birds_seen %>% 
+  mutate(bioregions = fct_rev(fct_infreq(bioregions))) %>% 
+  ggplot(aes(x = bioregions))+
+  geom_bar()+
+  coord_flip()+
+  facet_wrap(~ survey_year)
+  
+```
+
+```{r}
+birds_seen %>% 
+  group_by(bird_type) %>% 
+  summarise(n = n()) %>% 
+  slice_max(order_by = n, n = 10) %>% 
+  mutate(bird_type = fct_reorder(bird_type, n)) %>% 
+  ggplot(aes(bird_type, n))+
+  geom_col()+
+  coord_flip()
+```
+
+```{r}
+birds_seen %>% 
+  mutate(bird_type = fct_lump(bird_type, n = 20)) %>% 
+  ggplot(aes(bird_type))+
+  geom_bar()+
+  coord_flip()
+```
+
+```{r}
+birds_seen %>% 
+  group_by(bioregions, bird_type) %>% 
+  tally() %>% 
+  slice_max(order_by = n, with_ties = FALSE)
+```
+
+```{r}
+birds_seen %>% 
+  group_by(bioregions, urban_rural, bird_type) %>% 
+  tally() %>% 
+  slice_max(order_by = n, with_ties = FALSE)
+```
+
+```{r}
+birds_seen %>% 
+  group_by(urban_rural, bird_type) %>% 
+  tally() %>% 
+  slice_max(order_by = n)
+```
+
+```{r}
+birds_seen %>% 
+  group_by(survey_year, bird_type) %>% 
+  tally() %>% 
+  slice_max(order_by = n)
+```
+
+```{r}
+birds_seen %>% 
+  group_by(survey_year, urban_rural, bioregions, bird_type) %>% 
+  tally() %>% 
+  slice_max(order_by = n)
+```
+
+Try producing a heat map
+
+```{r heatmap}
+# choose top 10 birds to start with
+n <- 10
+
+n_birds_names <- birds_seen %>% 
+  group_by(bird_type) %>% 
+  summarise(n = n()) %>% 
+  slice_max(order_by = n, n = n) %>% 
+  .$bird_type %>% 
+  str_sort()
+
+n_birds_names
+
+top_n_birds <- birds_seen %>% 
+  filter(bird_type %in% n_birds_names) %>% 
+  select(bioregions, bird_type, bird_count)
+
+regions <- 
+  birds_seen %>% 
+  group_by(bioregions) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>%
+  .$bioregions %>% 
+  str_sort()
+
+regions
+
+birds_data <- top_n_birds %>% 
+  group_by(bioregions, bird_type) %>%
+  tally()
+
+birds_data %>% 
+  ggplot(aes(bioregions, bird_type, fill = n)) + 
+  geom_tile()+
+  theme_minimal()
+```
