@@ -1,0 +1,104 @@
+---
+title: "Mature Weight vs Life Expectancy of Lemurs"
+output: html_notebook
+---
+
+```{r setup}
+library(here)
+library(tidyverse)
+```
+
+```{r load_data}
+load("2021_08_24_Lemurs/lemurs.rda")
+```
+
+Explore weight, age and age category
+
+Initially start with one species of lemur and look at individual lemurs within this.
+
+Look at ring-tailed lemurs
+
+```{r}
+lemurs %>%
+  filter(taxon == "LCAT" & !is.na(dod)) %>% 
+  group_by(dlc_id) %>% 
+  count() %>% 
+  arrange(desc(n))
+
+test <- lemurs %>% 
+  filter(dlc_id == "6761")
+
+test %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_y, y = weight_g, colour = age_category))
+```
+
+```{r}
+test <- lemurs %>% 
+  filter(age_category == "adult", !is.na(age_at_death_y)) %>% 
+  group_by(common_name, taxon, dlc_id) %>% 
+  summarise(max_adult_wt = max(weight_g),
+            mean_adult_wt = mean(weight_g),
+            mean_age_at_death = mean(age_at_death_y),
+            n = n()) %>% 
+  arrange(desc(n))
+
+test2 <- test %>% 
+  group_by(common_name) %>% 
+  summarise(max_adult_wt = max(max_adult_wt),
+            mean_adult_wt = mean(mean_adult_wt),
+            mean_age_at_death = mean(mean_age_at_death),
+            n = n())
+  
+
+test2 %>% 
+  ggplot(aes(x = mean_adult_wt, y = mean_age_at_death))+
+  geom_point()+
+  geom_smooth(method = "lm")
+
+
+```
+
+Apply linear model to this data and assess residuals
+
+```{r}
+library(tidymodels)
+tidymodels_prefer()
+
+linear_reg() %>% set_engine("lm")
+
+lm_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+lm_form_fit <- 
+  lm_model %>% 
+  fit(mean_age_at_death ~ max_adult_wt, data = test2)
+
+lm_form_fit %>% pluck("fit")
+
+
+```
+
+```{r}
+lemurs_test_res <- predict(lm_form_fit, new_data = test2 %>% 
+                             select(-mean_age_at_death))
+lemurs_test_res
+
+lemurs_test_res <- bind_cols(lemurs_test_res, test2 %>% select(mean_age_at_death))
+lemurs_test_res
+```
+
+```{r}
+ggplot(lemurs_test_res, aes(x = mean_age_at_death, y = .pred)) + 
+  # Create a diagonal line:
+  geom_abline(lty = 2) + 
+  geom_point(alpha = 0.5) + 
+  labs(y = "Predicted Age of death (log10)", x = "Age of death (log10)") +
+  # Scale and size the x- and y-axis uniformly:
+  coord_obs_pred()
+```
+
+```{r}
+rmse(lemurs_test_res, truth = mean_age_at_death, estimate = .pred)
+```

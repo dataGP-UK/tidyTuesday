@@ -1,0 +1,281 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup}
+library(tidyverse)
+library(skimr)
+```
+
+## Import
+
+```{r import dataset}
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+```
+
+Parsing failures: explore with **problems()** and **spec()**
+
+```{r}
+problems(lemurs)
+spec(lemurs)
+```
+
+### Parsing failure
+
+variable: **age_of_living_y = col_logical()**
+
+occurs in rows 1324:13450
+
+```{r}
+mean(is.na(lemurs$age_of_living_y))
+```
+
+all imported as NA - need to re import using read_csv. I suspect first 1324 values contain a lot of NA values and **read_csv** has interpreted variable as logical rather than as double.
+
+Options: Increase **max_guess**, or manually select variable type on import
+
+**col_types = cols(age_of_living_y = col_double())**
+
+```{r read_again_maxguess}
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv', guess_max = 2000)
+```
+
+```{r read_again_coltypes}
+lemurs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv', 
+                          col_types = cols(
+                            age_of_living_y = col_double()))
+```
+
+```{r}
+problems(lemurs)
+spec(lemurs)
+mean(is.na(lemurs$age_of_living_y))
+```
+
+## Tidying
+
+```{r skimr}
+skim(lemurs)
+```
+
+## Exploration
+
+```{r taxon}
+lemurs %>% 
+  ggplot(aes(x = fct_infreq(taxon)))+
+  geom_bar()+
+  coord_flip()
+
+```
+
+### Top 5 Species of lemur
+
+Select top 5 species and compare distributions of various variables
+
+```{r top_five}
+top_five <- lemurs %>% 
+  group_by(taxon) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  head(5) %>% 
+  pull(taxon)
+
+top_five <- lemurs %>% 
+  filter(taxon %in% top_five)
+```
+
+```{r sex_diff}
+top_five %>% 
+  ggplot(aes(x = taxon, fill = sex)) +
+  geom_bar(position = "fill")
+```
+
+```{r birth_type}
+top_five %>% 
+  ggplot(aes(x = taxon, fill = birth_type)) +
+  geom_bar()
+
+lemurs %>% 
+  ggplot(aes(x = fct_infreq(taxon), fill = birth_type)) +
+  geom_bar() +
+  coord_flip()
+```
+
+```{r current_res}
+lemurs %>% 
+  ggplot(aes(x = fct_infreq(taxon), fill = current_resident)) +
+  geom_bar() +
+  coord_flip()
+```
+
+### Litter Size
+
+```{r litter_size}
+
+lemurs %>% 
+  mutate(taxon = fct_infreq(taxon)) %>% 
+  ggplot()+
+  geom_jitter(aes(x = taxon,
+                   y = litter_size), alpha = 0.05)+
+  coord_flip()
+```
+
+Populations with more individuals seem to have individuals that come from larger litter.
+
+Is there a relationship between litter size and number of individuals
+
+```{r}
+lemurs %>% 
+  group_by(taxon) %>% 
+  summarise(mean_litter = mean(litter_size, na.rm = TRUE),
+            population = n()) %>% 
+  ggplot() +
+  geom_point(aes(y = mean_litter, x = population))+
+  geom_smooth(aes(y = mean_litter, x = population), method = "loess")
+```
+
+```{r}
+lemurs %>% 
+  ggplot()+
+  geom_bar(aes(litter_size))
+
+```
+
+### Weight
+
+Investigate weight at different ages for different species then compare
+
+```{r}
+top_five %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_mo, y = weight_g, colour = taxon), alpha = 0.1)
+```
+
+```{r}
+top_five %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_y, y = weight_g), alpha = 0.1, size = 0.5)+
+  facet_wrap(~ taxon)
+```
+
+```{r}
+top_five %>% 
+  filter(taxon == "PCOQ" & dlc_id == 1591) %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_d, y = weight_g))
+
+  
+```
+
+Sabrina is an outlier - wt gain ++++ then declined rapidly in old age
+
+```{r}
+top_five %>% 
+  filter(dlc_id == 6117) %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_y, y = weight_g))+
+  geom_smooth(aes(x = age_at_wt_y, y = weight_g))
+```
+
+```{r}
+top_five %>% 
+  filter(dlc_id != 6117) %>% 
+  ggplot()+
+  geom_point(aes(x = age_at_wt_mo, y = weight_g, colour = age_category), alpha = 0.2)
+```
+
+### Life Expectancy
+
+```{r select_life_exp_vars}
+life_expectancy <- lemurs %>% 
+  select(taxon, dlc_id, sex, dob, estimated_dob,birth_type, birth_institution,
+         dod, age_at_death_y, age_of_living_y, age_last_verified_y,
+         age_max_live_or_dead_y)
+```
+
+```{r test_MMUR}
+mmur <- life_expectancy %>% 
+  filter(taxon == "MMUR") %>% 
+  unique()
+
+view(mmur)
+```
+
+```{r}
+mmur %>% skim
+```
+
+filter to include only those with known dob and known dod and those born in captivity.
+
+```{r}
+mmur <- mmur %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" & is.na(estimated_dob)) %>%
+  select(-c(estimated_dob, birth_type, birth_institution))
+```
+
+```{r visualise_mmur}
+mmur %>% 
+  ggplot()+
+  geom_histogram(aes(x = age_at_death_y, fill = sex), binwidth = 1)
+
+```
+
+```{r test_PCOQ}
+pcoq <- life_expectancy %>% 
+  filter(taxon == "PCOQ") %>% 
+  unique() %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" & is.na(estimated_dob)) %>%
+  select(-c(estimated_dob, birth_type, birth_institution))
+
+pcoq %>% 
+  ggplot()+
+  geom_histogram(aes(x = age_at_death_y), binwidth = 2)
+
+```
+
+```{r all_lemurs_life_exp}
+all_lemur_life_exp <- life_expectancy %>% 
+  unique() %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" & is.na(estimated_dob)) %>%
+  select(-c(estimated_dob, birth_type, birth_institution))
+
+all_lemur_life_exp %>% 
+  ggplot()+
+  geom_density(aes(x = age_at_death_y))
+```
+
+```{r top_five_life_exp}
+top_five_life_exp <- top_five %>%  
+  select(taxon, dlc_id, sex, dob, estimated_dob,birth_type, birth_institution,
+         dod, age_at_death_y, age_of_living_y, age_last_verified_y,
+         age_max_live_or_dead_y) %>%
+  unique() %>% 
+  filter(!is.na(dob) & !is.na(dod) & birth_type == "CB" & is.na(estimated_dob)) %>%
+  select(-c(estimated_dob, birth_type, birth_institution))
+
+top_five_life_exp %>%
+  ggplot()+
+  geom_density(aes(x = age_at_death_y, fill = taxon)) +
+  facet_wrap(~ taxon)
+
+```
+
+```{r}
+top_five_life_exp %>% 
+  ggplot()+
+  geom_density(aes(x = age_at_death_y), fill = "steel blue")
+```
+
+```{r}
+top_five_life_exp %>% 
+  ggplot()+
+  geom_violin(aes(x = taxon, y = age_at_death_y, fill = taxon))
+```
+
+```{r}
+top_five_life_exp %>% 
+  mutate(taxon = fct_reorder(taxon , age_at_death_y, na.rm = TRUE)) %>% 
+  ggplot()+
+  geom_boxplot(aes(x = age_at_death_y, fill = taxon))
+```
