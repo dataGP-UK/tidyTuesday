@@ -82,7 +82,7 @@ birds_data %>%
        caption = "Data: https://github.com/rfordatascience/tidytuesday | Plot: dataGP-UK")+
   theme_bw()+
   theme(axis.text.x = element_text(angle=45,hjust=1, size = 10),
-        axis.title.x = element_text(size = 9))
+        axis.title.x = element_text(size = 9)) 
 ```
 
 ```{r}
