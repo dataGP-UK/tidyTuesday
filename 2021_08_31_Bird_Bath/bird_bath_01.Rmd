@@ -159,8 +159,8 @@ birds_seen %>%
 Try producing a heat map
 
 ```{r heatmap}
-# choose top 10 birds to start with
-n <- 10
+# choose top n birds to start with
+n <- 6
 
 n_birds_names <- birds_seen %>% 
   group_by(bird_type) %>% 
@@ -178,16 +178,22 @@ top_n_birds <- birds_seen %>%
 regions <- 
   birds_seen %>% 
   group_by(bioregions) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>%
+  summarise(n = n()) %>% 
+  slice_max(order_by = n, n = n) %>% 
   .$bioregions %>% 
   str_sort()
 
 regions
 
-birds_data <- top_n_birds %>% 
+birds_data <- top_n_birds %>%
+  filter(bioregions %in% regions) %>% 
   group_by(bioregions, bird_type) %>%
-  tally()
+  tally() %>% 
+  ungroup()
+
+birds_data 
+
+birds_data <- complete(birds_data, bioregions, bird_type, fill = list(n = 0))
 
 birds_data %>% 
   ggplot(aes(bioregions, bird_type, fill = n)) + 

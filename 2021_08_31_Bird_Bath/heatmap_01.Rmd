@@ -3,56 +3,88 @@ title: "Bird Baths - Creating a HeatMap"
 output: html_notebook
 ---
 
-```{r}
+```{r setup}
 library(tidyverse)
 library(here)
 ```
 
-```{r}
+```{r import}
+# main data set
 bird_baths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-31/bird_baths.csv')
+
+# list of abbreviations for regions 
+# https://www.environment.gov.au/land/nrs/science/ibra/ibra7-codes
+region_list <- read_csv("2021_08_31_Bird_Bath/regions-list.csv")
 ```
 
-```{r}
+```{r transform}
+# subset for rows where presence of bird recorded
+# remove 'totals' for each bird by excluding rows with NAs
 birds_seen <- bird_baths %>% 
-   filter(bird_count > 0 & !is.na(survey_year))
-```
+  filter(bird_count > 0) %>% 
+  drop_na() 
 
-```{r}
-n <- 10
-
+# identify 10 commonest species in dataset
+## create character vector to filter birds_seen dataframe
 birds_names <- birds_seen %>% 
+  # group and summarise
   group_by(bird_type) %>% 
   summarise(n = n()) %>% 
-  slice_max(order_by = n, n = n) %>% 
+  # select top 10
+  slice_max(order_by = n, n = 10) %>% 
+  # extract string and sort alphabetically
   .$bird_type %>% 
   str_sort()
 
-birds_names
-
+# filter dataframe to show only top 10 species
 top_birds <- birds_seen %>% 
-  filter(bird_type %in% birds_names) %>% 
-  select(bioregions, bird_type, bird_count)
+  filter(bird_type %in% birds_names)
 
+# create character vector of bioregions to use in final plot and for key
 region_names <- 
   birds_seen %>% 
   group_by(bioregions) %>% 
   summarise(n = n()) %>% 
-  slice_max(order_by = n, n = n) %>% 
   .$bioregions %>% 
   str_sort()
 
-region_names
-
+# create dataset for ggplot to use
 birds_data <- top_birds %>%
-  filter(bioregions %in% region_names) %>% 
+  # count number of birds in each bioregion
   group_by(bioregions, bird_type) %>%
   tally() %>% 
-  ungroup()
+  ungroup() %>% 
+  rename("count" = n) %>% 
+  # fill in gaps to complete the grid - use count so can log transform scale
+  complete(bioregions, bird_type, fill = list(count = 1)) %>% 
+  left_join(region_list, by = c("bioregions" = "name"))
 
-birds_data <- complete(birds_data, bioregions, bird_type, fill = list(n = 0))
+# create abbreviations for x axis
+region_abb <- birds_data$code %>% 
+  unique()
 
+# create a key for x-axis
+key <- paste(region_abb, "=", region_names)
+key <- str_c(key, collapse = ", ")
+key <-str_wrap(key, width = 80)
+```
+
+```{r visualise}
 birds_data %>% 
-  ggplot(aes(bioregions, bird_type, fill = n)) + 
+  ggplot(aes(bioregions, bird_type, fill = count)) + 
   geom_tile()+
-  theme_minimal()
+  scale_fill_gradient(low = "white", high = "dark red",
+                      trans = "log10")+
+  scale_x_discrete(labels = region_abb)+
+  labs(x = key, y = NULL,
+       title = "Top 10 most frequently spotted bird species at bird baths in Australia",
+       subtitle = "Sydney Basin had the most sightings, especially the Noisy Miner and Rainbow Lorikeet",
+       caption = "Data: https://github.com/rfordatascience/tidytuesday | Plot: dataGP-UK")+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle=45,hjust=1, size = 10),
+        axis.title.x = element_text(size = 9))
+```
+
+```{r}
+ggsave("2021_08_31_Bird_Bath/heatmap.png", width = 10, height = 6)
 ```
