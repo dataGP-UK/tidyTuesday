@@ -1,0 +1,58 @@
+---
+title: "Bird Baths - Creating a HeatMap"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+```{r}
+bird_baths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-31/bird_baths.csv')
+```
+
+```{r}
+birds_seen <- bird_baths %>% 
+   filter(bird_count > 0 & !is.na(survey_year))
+```
+
+```{r}
+n <- 10
+
+birds_names <- birds_seen %>% 
+  group_by(bird_type) %>% 
+  summarise(n = n()) %>% 
+  slice_max(order_by = n, n = n) %>% 
+  .$bird_type %>% 
+  str_sort()
+
+birds_names
+
+top_birds <- birds_seen %>% 
+  filter(bird_type %in% birds_names) %>% 
+  select(bioregions, bird_type, bird_count)
+
+region_names <- 
+  birds_seen %>% 
+  group_by(bioregions) %>% 
+  summarise(n = n()) %>% 
+  slice_max(order_by = n, n = n) %>% 
+  .$bioregions %>% 
+  str_sort()
+
+region_names
+
+birds_data <- top_birds %>%
+  filter(bioregions %in% region_names) %>% 
+  group_by(bioregions, bird_type) %>%
+  tally() %>% 
+  ungroup()
+
+birds_data <- complete(birds_data, bioregions, bird_type, fill = list(n = 0))
+
+birds_data %>% 
+  ggplot(aes(bioregions, bird_type, fill = n)) + 
+  geom_tile()+
+  theme_minimal()
+```
