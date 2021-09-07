@@ -1,0 +1,65 @@
+---
+title: "Formula One Data - using web API"
+output: html_notebook
+---
+
+```{r setup}
+library(tidyverse)
+library(jsonlite)
+library(httr)
+```
+
+```{r drivers}
+raw_json <- 
+  GET(url = "http://ergast.com/api/f1/drivers.json?limit=853") %>%
+  content(type = "text", encoding = "UTF-8") %>% 
+  parse_json(simplifyVector = FALSE)
+
+drivers <- raw_json$MRData$DriverTable$Drivers %>% 
+  tibble(data = .) %>% 
+  unnest_wider(data) %>% 
+  rename("driverRef" = driverId) %>% 
+  add_column(driverId = 1:nrow(.),.before = 1) %>% 
+  select(driverId, 
+         driverRef,
+         "number" = permanentNumber,
+         code, 
+         "forename" = givenName,
+         "surname" = familyName,
+         "dob" = dateOfBirth,
+         nationality,
+         url)
+  
+```
+
+```{r constructors}
+raw_json <- httr::GET(url = "http://ergast.com/api/f1/constructors.json?limit=211") %>% 
+  content(type = "text", encoding = "UTF-8") %>% 
+  parse_json(simplifyVector = FALSE)
+
+constructors <- raw_json$MRData$ConstructorTable$Constructors %>% 
+  tibble(data = .) %>% 
+  unnest_wider(data) %>% 
+  rename("constructorRef" = constructorId) %>% 
+  add_column(constructorId = 1:nrow(.),.before = 1) %>% 
+  select(1:2, name, nationality, url)
+```
+
+```{r circuits}
+
+raw_json <- GET(url = "http://ergast.com/api/f1/circuits.json?limit=77") %>% 
+  content(type = "text", encoding = "UTF-8") %>% 
+  parse_json()
+
+circuits <- raw_json$MRData$CircuitTable$Circuits %>% 
+  tibble(data = .) %>% 
+  unnest_wider(data) %>% 
+  unnest_wider(Location) %>% 
+  rename(circuitRef = circuitId) %>% 
+  add_column(circuitId = 1:nrow(.), .before = 1) %>% 
+  relocate(url, .after = last_col())
+```
+
+```{r}
+
+```
