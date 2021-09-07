@@ -131,10 +131,41 @@ results1 <- results %>%
   relocate(time_behind, .after = "time")
 ```
 
+## Constructor results
+
+```{r}
+constructor_results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_results.csv', na = "\\N")
+```
+
+```{r}
+constructor_results$status %>% unique()
+constructor_results %>% 
+  filter(status == "D")
+```
+
+## Status
+
+```{r}
+status <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/status.csv')
+
+```
+
+Look at status per race over a season - differences between teams
+
+Check distribution of status
+
+```{r}
+results %>% 
+  group_by(statusId) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  left_join(status)
+```
 
 
 
-    constructor_results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_results.csv')
+
+
 
     constructor_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_standings.csv')
 
@@ -145,9 +176,6 @@ results1 <- results %>%
     pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv')
 
     qualifying <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/qualifying.csv')
-
-
-    results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/results.csv')
 
     seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/seasons.csv')
 
