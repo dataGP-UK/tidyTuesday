@@ -1,0 +1,156 @@
+---
+title: "Formula 1 - Import and Tidying"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+## Circuits
+
+```{r}
+circuits <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/circuits.csv')
+
+```
+
+No parsing errors.
+
+Explore distribution of circuits by country
+
+```{r}
+
+circuits$country %>% n_distinct()
+
+circuits %>% 
+  group_by(country) %>%
+  ggplot()+ 
+  geom_bar(aes(x = fct_rev(fct_infreq(country))))+
+  coord_flip()+
+  scale_y_continuous(breaks = seq(0, 11, 1))
+```
+
+34 different countries have F1 circuits that have held Grand Prix races since 1950. USA has the most individual circuits with 11.
+
+I wonder how many Grand Prix have been held in each country?
+
+Possibility of a geo-spatial plot showing number of races held at each circuit or in each country maybe. Could also do a scatter plot comparing number of circuits and number of grand prix.
+
+## Constructors
+
+```{r}
+constructors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructors.csv')
+```
+
+No parsing errors.
+
+Explore distribution of constructors by nationality.
+
+```{r}
+constructors$nationality %>% n_distinct()
+
+constructors %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(nationality))))+
+  coord_flip()
+```
+
+The British dominate the constructors.
+
+Maybe look at constructors from each country over time.
+
+## Drivers
+
+```{r}
+drivers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/drivers.csv')
+```
+
+No parsing errors.
+
+Look at distribution of drivers
+
+```{r}
+drivers$nationality %>% n_distinct()
+
+drivers %>% 
+  ggplot()+
+  geom_bar(aes(x = fct_rev(fct_infreq(nationality))))+
+  coord_flip()
+```
+
+British and US drivers are most common followed by Italian, German, French, Brazilian and Argentinian. Change American-Italian and Argentinian_Italian to American and Argentinian respectively.
+
+## Races
+
+```{r}
+races <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/races.csv', na = "\\N")
+```
+
+```{r}
+skimr::skim(races)
+
+unique(races$time)
+typeof(races$time)
+```
+
+Time parsed as character vector - due to "//N" which I presume is a missing value. Checked with API interface and confirms this. Best to sort this out on reading into R. I have added to code and it now parses this vector correctly as 'difftime'.
+
+```{r}
+class(races$time)
+```
+
+```{r}
+races %>% 
+  group_by(year) %>% 
+  count %>% 
+  ggplot(aes(x = year, y = n))+
+  geom_col(colour = "black", fill = "grey")
+```
+
+## Results
+
+```{r}
+results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/results.csv', na = "\\N")
+```
+
+```{r}
+skimr::skim(results)
+```
+
+Time parsed as character due to winners time + difference. \> 1 lap behind then no time recorded i.e. NA. Possibly correct this to give a time for all finishers within 1 lap of the winner.
+
+Work on single race to start with: most recent
+
+```{r warning=FALSE}
+results1 <- results %>% 
+  mutate(time_behind = hms::hms(as.numeric(str_replace(time, "\\+", ""))),
+         time_behind = hms(time_behind)) %>% 
+  mutate_at(vars(time), na_if, "^\\+") %>% 
+  mutate(time = hms(.$time)) %>% 
+  relocate(time_behind, .after = "time")
+```
+
+
+
+
+    constructor_results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_results.csv')
+
+    constructor_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_standings.csv')
+
+    driver_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/driver_standings.csv')
+
+    lap_times <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/lap_times.csv')
+
+    pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv')
+
+    qualifying <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/qualifying.csv')
+
+
+    results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/results.csv')
+
+    seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/seasons.csv')
+
+    status <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/status.csv')
+
+\
