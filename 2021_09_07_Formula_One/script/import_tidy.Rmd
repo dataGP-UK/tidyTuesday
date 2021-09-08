@@ -162,23 +162,104 @@ results %>%
   left_join(status)
 ```
 
+## Qualifying
+
+```{r}
+qualifying <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/qualifying.csv', na = "\\N")
+```
+
+## Pitstops
+
+```{r}
+pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv', na = "\\N", col_types = cols(duration = col_time()))
+
+pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv', na = "\\N")
+
+problems(pit_stops)
+```
+
+Duration data parsed as character. Mixed format - hms. Convert to duration with lubridate.
+
+```{r}
+pit_stops <- pit_stops %>% 
+  #filter(duration < 60) %>% 
+  mutate(duration = as.numeric(milliseconds(milliseconds)))
 
 
+```
 
+```{r}
+skimr::skim(pit_stops)
+```
 
+Distribution of pit_stop duration
 
-    constructor_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_standings.csv')
+```{r}
+pit_stops %>% 
+  ggplot()+
+  geom_histogram(aes(duration), binwidth = 0.05)+
+  scale_x_log10()
 
-    driver_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/driver_standings.csv')
+pit_stops %>% 
+  ggplot()+
+  geom_boxplot(aes(duration))+
+  scale_x_log10()
+```
 
-    lap_times <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/lap_times.csv')
+## Lap-times
 
-    pit_stops <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/pit_stops.csv')
+```{r}
+lap_times <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/lap_times.csv')
+```
 
-    qualifying <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/qualifying.csv')
+```{r}
+lap_times <- lap_times %>% 
+  mutate(seconds = milliseconds/1000)
+```
 
-    seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/seasons.csv')
+```{r}
+skimr::skim(lap_times)
+```
 
-    status <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/status.csv')
+## Driver Standings
+
+```{r}
+driver_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/driver_standings.csv', col_types = cols(
+  driverStandingsId = col_double(),
+  raceId = col_double(),
+  driverId = col_double(),
+  points = col_double(),
+  position = col_double(),
+  positionText = col_character(),
+  wins = col_double()
+))
+```
+
+```{r}
+driver_standings %>% 
+  group_by(positionText) %>% 
+  count()
+```
+
+What is position_text and position? Why up to 99 and what is D and -?
+
+## Constructor standings
+
+```{r}
+constructor_standings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/constructor_standings.csv')
+
+```
+
+```{r}
+constructor_standings %>% 
+  group_by(positionText) %>% 
+  count() %>% arrange(n)
+```
+
+## Seasons
+
+```{r}
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-09-07/seasons.csv')
+```
 
 \
